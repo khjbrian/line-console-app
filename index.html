@@ -250,6 +250,23 @@
     padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
   }
 
+  .blk.pending{outline:2px dashed rgba(255,255,255,.75);outline-offset:-2px;}
+  .confirm-badge{
+    position:absolute;top:3px;left:3px;z-index:2;width:14px;height:14px;border-radius:50%;
+    background:var(--ok);color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;
+    box-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+  .pending-badge{
+    position:absolute;top:-8px;left:3px;z-index:2;
+    background:var(--warn);color:#fff;font-size:9px;font-weight:700;letter-spacing:.02em;
+    padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+  .delay-badge{
+    position:absolute;bottom:-8px;right:3px;z-index:2;
+    background:var(--crit);color:#fff;font-size:9px;font-weight:700;letter-spacing:.02em;
+    padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);white-space:nowrap;
+  }
+
   .resize-handle{
     position:absolute;top:0;right:0;bottom:0;width:9px;cursor:ew-resize;
     display:flex;align-items:center;justify-content:center;
@@ -501,6 +518,32 @@
     font-size:12.5px;font-weight:700;border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer;
   }
   .halt-btn:hover{background:var(--crit);color:#fff;}
+
+  /* ---------- confirm box ---------- */
+  .confirm-box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:6px;background:var(--surface);}
+  .confirm-choices{display:flex;flex-direction:column;gap:8px;}
+  .confirm-choice-btn{
+    display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;
+    font-family:var(--sans);padding:10px 12px;border-radius:7px;border:1px solid var(--accent);
+    background:var(--surface-2);color:var(--ink);cursor:pointer;font-size:13px;font-weight:700;
+  }
+  .confirm-choice-btn:hover{background:var(--accent);color:var(--accent-ink);}
+  .confirm-choice-btn:hover span{color:inherit;opacity:.85;}
+  .confirm-choice-btn span{font-size:11px;font-weight:500;color:var(--ink-faint);}
+  .confirm-status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .confirm-check{
+    display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:13px;color:var(--ok);
+  }
+  .confirm-mode{
+    font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink-dim);background:var(--line-soft);
+    padding:2px 8px;border-radius:99px;
+  }
+  .confirm-undo{
+    margin-left:auto;font-family:var(--sans);font-size:11.5px;color:var(--ink-faint);background:none;
+    border:none;text-decoration:underline;cursor:pointer;padding:0;
+  }
+  .confirm-undo:hover{color:var(--ink);}
+  .confirm-delay-note{margin-top:8px;font-size:12px;color:var(--crit);font-weight:700;}
 </style>
 
 <div class="app">
@@ -623,6 +666,8 @@
     <button class="btn" id="detailCancel" style="flex:1">취소</button>
     <button class="btn primary" id="detailSave" style="flex:1">저장</button>
   </div>
+  <h2>확정</h2>
+  <div class="confirm-box" id="confirmBox">—</div>
   <h2>실적 관리</h2>
   <div class="prod-box" id="prodBox">—</div>
 </div>
@@ -846,6 +891,9 @@
     ]},
   ];
 
+  // declared here (before renderBoard() runs) because renderBlockContent reads it
+  // for the confirmed/delay badges as soon as the first blocks are created
+  const productionState = {};
   let uidCounter = 0;
   const lineAreaByName = {};
 
@@ -888,6 +936,8 @@
     div.dataset.span = o.span;
     div.dataset.line = lineLabel;
     div.dataset.noRamp = o.noRamp ? 'true' : 'false';
+    div.dataset.confirmed = o.confirmed === false ? 'false' : 'true';
+    div.dataset.lockMode = o.lockMode || '';
     renderBlockContent(div);
     const handle = document.createElement('div');
     handle.className = 'resize-handle';
@@ -903,8 +953,22 @@
   function renderBlockContent(div){
     const existingHandle = div.querySelector('.resize-handle');
     const qtyFmt = Number(div.dataset.qty).toLocaleString() + ' EA';
-    div.title = `${div.dataset.buyer} · ${div.dataset.item} · ${div.dataset.po} · ${qtyFmt} · 출고 ${isoToShip(div.dataset.ship)}`;
+    const confirmed = div.dataset.confirmed === 'true';
+    div.classList.toggle('confirmed', confirmed);
+    div.classList.toggle('pending', !confirmed);
+    const modeLabel = div.dataset.lockMode === 'date' ? '완료일자 고정' : (div.dataset.lockMode === 'qty' ? '목표생산량 고정' : '');
+    div.title = `${div.dataset.buyer} · ${div.dataset.item} · ${div.dataset.po} · ${qtyFmt} · 출고 ${isoToShip(div.dataset.ship)}${confirmed ? ` · 확정(${modeLabel})` : ' · 확정 대기'}`;
     div.innerHTML = `<span class="buyer">${div.dataset.buyer}</span><span class="item">${div.dataset.item}</span><span class="meta">${div.dataset.po} · ${qtyFmt}</span><span class="ship">출고 ${isoToShip(div.dataset.ship)}</span>`;
+    if(confirmed){
+      div.insertAdjacentHTML('beforeend', `<span class="confirm-badge" title="확정됨 · ${modeLabel}">✓</span>`);
+    } else {
+      div.insertAdjacentHTML('beforeend', `<span class="pending-badge" title="관리자 확정 대기">확정 대기</span>`);
+    }
+    const p = productionState[div.dataset.uid];
+    if(p && p.lockMode === 'qty' && p.originalPlannedEnd != null && p.plannedEnd > p.originalPlannedEnd){
+      const delay = p.plannedEnd - p.originalPlannedEnd;
+      div.insertAdjacentHTML('beforeend', `<span class="delay-badge" title="목표생산량 고정 · 완료예정일 ${delay}일 지연">⏰ ${delay}일 지연</span>`);
+    }
     if(existingHandle) div.appendChild(existingHandle);
   }
 
@@ -1012,6 +1076,12 @@
     blk.addEventListener('pointercancel', end);
   }
 
+  // editing a schedule (move/resize/manual field edit) invalidates any prior
+  // confirmation -- it needs a fresh manager review
+  function unconfirmBlock(el){
+    el.dataset.confirmed = 'false';
+    el.dataset.lockMode = '';
+  }
   function snapMove(blk){
     let start = Math.round(parseFloat(blk.style.left) / DAY_W) + 1;
     const span = parseInt(blk.dataset.span, 10);
@@ -1020,6 +1090,8 @@
     blk.dataset.start = start;
     blk.dataset.line = blk.parentElement.dataset.line;
     delete productionState[blk.dataset.uid];
+    unconfirmBlock(blk);
+    renderBlockContent(blk);
     showToast(`${blk.dataset.po} → ${blk.dataset.line} · ${fmtDay(start)}~${fmtDay(start + span - 1)}로 이동`);
   }
   function snapResize(blk){
@@ -1029,6 +1101,8 @@
     positionBlock(blk, start, span);
     blk.dataset.span = span;
     delete productionState[blk.dataset.uid];
+    unconfirmBlock(blk);
+    renderBlockContent(blk);
     showToast(`${blk.dataset.po} 기간 조정 · ${span}일 (${fmtDay(start)}~${fmtDay(start + span - 1)})`);
   }
 
@@ -1058,11 +1132,27 @@
   // is what actually moves the average and pushes the projected completion date.
   // `steadyRate` is the full-speed target once the line is ramped up; each day's actual
   // target is steadyRate * rampFraction(workday index since start).
-  const productionState = {};
-  function targetForDay(p, day){
+  // Confirmation + lock mode: an order is "pending" until a manager confirms it under
+  // one of two locked conditions. 완료일자 고정 (date locked) keeps plannedEnd fixed and
+  // raises the target for remaining un-logged days whenever there's a shortfall.
+  // 목표생산량 고정 (qty locked) keeps steadyRate fixed and pushes plannedEnd later when
+  // the fixed rate can no longer cover the remaining qty in time. `targetLog` freezes
+  // each day's target the moment that day is first logged, so historical rows never
+  // silently change after the fact -- only still-open days react live.
+  function liveTargetForDay(p, day){
+    if(p.lockMode === 'date'){
+      const loggedSum = Object.values(p.dailyLog).reduce((a, b) => a + b, 0);
+      const remaining = Math.max(0, p.total - loggedSum);
+      const remainingDays = Math.max(1, workdaysBetween(day, p.plannedEnd));
+      return Math.max(1, Math.round(remaining / remainingDays));
+    }
     const dayIndex = workdaysBetween(p.start, day) - 1;
     const fraction = p.noRamp ? 1 : rampFraction(dayIndex);
     return Math.max(1, Math.round(p.steadyRate * fraction));
+  }
+  function targetForDay(p, day){
+    if(p.targetLog && p.targetLog[day] !== undefined) return p.targetLog[day];
+    return liveTargetForDay(p, day);
   }
   function getProd(el){
     const uid = el.dataset.uid;
@@ -1079,15 +1169,56 @@
     const lineShort = (el.dataset.line || '').split(' · ')[0];
     const team = teamData.find(t => t.line === lineShort);
     const defaultHeadcount = team ? team.members : 8;
-    const p = { total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, defaultHeadcount, dailyLog: {}, headcountLog: {} };
+    const p = {
+      total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, defaultHeadcount,
+      dailyLog: {}, headcountLog: {}, targetLog: {},
+      confirmed: el.dataset.confirmed === 'true',
+      lockMode: el.dataset.lockMode || null,
+      originalPlannedEnd: null,
+    };
     for(let d = start; d <= Math.min(TODAY - 1, plannedEnd); d++){
       if(!isSunday(d)){
-        p.dailyLog[d] = targetForDay(p, d);
+        const t = liveTargetForDay(p, d);
+        p.targetLog[d] = t;
+        p.dailyLog[d] = t;
         p.headcountLog[d] = defaultHeadcount;
       }
     }
     productionState[uid] = p;
     return p;
+  }
+
+  // recomputes the still-open (un-logged) target cells in the daily table live,
+  // without touching any input the user might currently be typing into
+  function refreshLiveTargetCells(p){
+    if(p.lockMode !== 'date') return;
+    prodDayRange(p).forEach(d => {
+      if(p.targetLog[d] !== undefined) return;
+      const cell = document.getElementById('tgt-' + d);
+      if(cell) cell.textContent = liveTargetForDay(p, d).toLocaleString();
+    });
+  }
+
+  // qty-locked mode: if the fixed steadyRate can no longer cover what's left in the
+  // time remaining, push plannedEnd (and the block's span) later. Never pulls it
+  // earlier automatically. Returns true if this pushed the date out.
+  function applyQtyLockAdjustment(p, el){
+    const loggedSum = Object.values(p.dailyLog).reduce((a, b) => a + b, 0);
+    const remaining = Math.max(0, p.total - loggedSum);
+    if(remaining <= 0) return false;
+    const loggedDays = Object.keys(p.dailyLog).map(Number);
+    const lastLogged = loggedDays.length ? Math.max(...loggedDays) : p.start - 1;
+    const projectFrom = Math.max(lastLogged, TODAY - 1);
+    const neededDays = Math.ceil(remaining / p.steadyRate);
+    const newPlannedEnd = addWorkdays(projectFrom, neededDays);
+    if(newPlannedEnd <= p.plannedEnd) return false;
+    p.plannedEnd = newPlannedEnd;
+    const newSpan = Math.min(31 - p.start + 1, newPlannedEnd - p.start + 1);
+    el.dataset.span = newSpan;
+    positionBlock(el, p.start, newSpan);
+    refreshOverlapsForArea(el.parentElement);
+    renderBlockContent(el);
+    return true;
   }
 
   function prodDayRange(p){
@@ -1183,7 +1314,7 @@
               <tr class="${d >= TODAY ? 'future' : ''}">
                 <td>${fmtDay(d)} (${dow[(firstDow + d - 1) % 7]})</td>
                 <td><input type="number" min="1" class="headcount-input" data-day="${d}" value="${p.headcountLog[d] ?? ''}" placeholder="${p.defaultHeadcount}" /></td>
-                <td class="qty">${targetForDay(p, d).toLocaleString()}</td>
+                <td class="qty" id="tgt-${d}">${targetForDay(p, d).toLocaleString()}</td>
                 <td><input type="number" min="0" class="daily-input" data-day="${d}" value="${p.dailyLog[d] ?? ''}" placeholder="-" /></td>
                 <td class="qty per-person" id="pp-${d}">${perPersonText(p, d)}</td>
               </tr>
@@ -1206,12 +1337,31 @@
       input.addEventListener('input', () => {
         const day = parseInt(input.dataset.day, 10);
         const v = input.value === '' ? null : Math.max(0, parseInt(input.value, 10) || 0);
-        if(v === null) delete p.dailyLog[day]; else p.dailyLog[day] = v;
-        const cell = document.getElementById('pp-' + day);
-        if(cell) cell.textContent = perPersonText(p, day);
+        if(v === null){
+          delete p.dailyLog[day];
+          delete p.targetLog[day];
+        } else {
+          if(p.targetLog[day] === undefined) p.targetLog[day] = liveTargetForDay(p, day);
+          p.dailyLog[day] = v;
+        }
+        const ppCell = document.getElementById('pp-' + day);
+        if(ppCell) ppCell.textContent = perPersonText(p, day);
+        const tgtCell = document.getElementById('tgt-' + day);
+        if(tgtCell) tgtCell.textContent = targetForDay(p, day).toLocaleString();
+        refreshLiveTargetCells(p);
         refreshProdSummary(p, el);
       });
-      input.addEventListener('change', () => checkShipRisk());
+      input.addEventListener('change', () => {
+        const day = parseInt(input.dataset.day, 10);
+        let delayed = false;
+        if(p.lockMode === 'qty' && p.dailyLog[day] !== undefined) delayed = applyQtyLockAdjustment(p, el);
+        if(delayed){
+          renderProdBox(el);
+          renderConfirmBox(p, el);
+          showToast(`${el.dataset.po} 목표생산량 고정 · 실적 부족으로 완료예정일이 ${fmtDay(p.plannedEnd)}로 밀렸습니다`);
+        }
+        checkShipRisk();
+      });
     });
     document.getElementById('prodHalt').addEventListener('click', () => haltProduction(el));
     refreshProdSummary(p, el);
@@ -1240,8 +1390,58 @@
     document.getElementById('d-ship').value = el.dataset.ship;
     document.getElementById('d-status').value = el.dataset.status;
     renderProdBox(el);
+    renderConfirmBox(getProd(el), el);
     overlay.classList.add('open');
     detail.classList.add('open');
+  }
+
+  // ---------- confirm workflow ----------
+  function renderConfirmBox(p, el){
+    const box = document.getElementById('confirmBox');
+    if(p.confirmed){
+      const modeLabel = p.lockMode === 'date' ? '완료일자 고정' : (p.lockMode === 'qty' ? '목표생산량 고정' : '조건 미지정');
+      const delay = (p.lockMode === 'qty' && p.originalPlannedEnd != null) ? p.plannedEnd - p.originalPlannedEnd : 0;
+      box.innerHTML = `
+        <div class="confirm-status">
+          <span class="confirm-check">✓ 확정됨</span>
+          <span class="confirm-mode">${modeLabel}</span>
+          <button class="confirm-undo" id="confirmUndo">확정 해제</button>
+        </div>
+        ${delay > 0 ? `<div class="confirm-delay-note">⏰ 실적 부족으로 완료예정일이 ${delay}일 밀렸습니다 (${fmtDay(p.plannedEnd)})</div>` : ''}
+      `;
+      document.getElementById('confirmUndo').addEventListener('click', () => {
+        pushUndo();
+        p.confirmed = false;
+        p.lockMode = null;
+        el.dataset.confirmed = 'false';
+        el.dataset.lockMode = '';
+        renderBlockContent(el);
+        renderConfirmBox(p, el);
+        showToast(`${el.dataset.po} 확정 해제됨`);
+      });
+    } else {
+      box.innerHTML = `
+        <p class="hint" style="margin-bottom:8px;">관리자가 검토 후 아래 조건 중 하나로 확정해야 합니다. 확정 후 실적이 목표에 못 미치면, 선택한 조건에 맞춰 자동으로 조정됩니다.</p>
+        <div class="confirm-choices">
+          <button class="confirm-choice-btn" id="confirmByDate">완료일자 고정<span>실적 부족 시 남은 날짜의 목표량이 올라갑니다</span></button>
+          <button class="confirm-choice-btn" id="confirmByQty">목표생산량 고정<span>실적 부족 시 완료예정일이 뒤로 밀립니다</span></button>
+        </div>
+      `;
+      document.getElementById('confirmByDate').addEventListener('click', () => confirmOrder(p, el, 'date'));
+      document.getElementById('confirmByQty').addEventListener('click', () => confirmOrder(p, el, 'qty'));
+    }
+  }
+  function confirmOrder(p, el, mode){
+    pushUndo();
+    p.confirmed = true;
+    p.lockMode = mode;
+    p.originalPlannedEnd = p.plannedEnd;
+    el.dataset.confirmed = 'true';
+    el.dataset.lockMode = mode;
+    renderBlockContent(el);
+    renderConfirmBox(p, el);
+    refreshLiveTargetCells(p);
+    showToast(`${el.dataset.po} 확정 완료 · ${mode === 'date' ? '완료일자' : '목표생산량'} 고정`);
   }
   function closeDetail(){ overlay.classList.remove('open'); detail.classList.remove('open'); currentEl = null; }
   overlay.addEventListener('click', closeDetail);
@@ -1268,6 +1468,7 @@
     span = Math.min(span, 32 - start);
     el.dataset.span = span;
     positionBlock(el, start, span);
+    unconfirmBlock(el);
 
     el.className = `blk ${el.dataset.buyerClass} risk-${el.dataset.risk}`;
     renderBlockContent(el);
@@ -1283,7 +1484,8 @@
 
     delete productionState[el.dataset.uid];
     renderProdBox(el);
-    showToast(`${el.dataset.po} 저장 완료`);
+    renderConfirmBox(getProd(el), el);
+    showToast(`${el.dataset.po} 저장 완료 · 재확정이 필요합니다`);
     checkShipRisk();
   });
 
@@ -1523,7 +1725,7 @@
     const block = createBlock({
       start, span, buyerClass: buyerClassFor(item.buyer), buyer: item.buyer,
       item: item.item, po: item.po, qty: item.qtyNum, ship: item.due, risk: item.badge,
-      status: statusText, noRamp: !!item.resumed,
+      status: statusText, noRamp: !!item.resumed, confirmed: false,
     }, targetLineName);
     const idleEl = area.querySelector('.idle-slot');
     if(idleEl) idleEl.remove();
@@ -1594,6 +1796,7 @@
       uid: b.dataset.uid, line: b.dataset.line, po: b.dataset.po, buyer: b.dataset.buyer,
       buyerClass: b.dataset.buyerClass, item: b.dataset.item, qty: b.dataset.qty, ship: b.dataset.ship,
       status: b.dataset.status, risk: b.dataset.risk, start: b.dataset.start, span: b.dataset.span,
+      noRamp: b.dataset.noRamp === 'true', confirmed: b.dataset.confirmed === 'true', lockMode: b.dataset.lockMode || '',
     }));
     const idleLines = Object.keys(lineAreaByName).filter(name => lineAreaByName[name].querySelector('.idle-slot'));
     return {
@@ -1609,12 +1812,17 @@
   function restoreState(snap){
     document.querySelectorAll('.blk').forEach(b => b.remove());
     document.querySelectorAll('.idle-slot').forEach(s => s.remove());
+    // restore production state (targetLog/confirmed/lockMode/etc.) before recreating
+    // blocks, since renderBlockContent reads it immediately for the delay badge
+    Object.keys(productionState).forEach(k => delete productionState[k]);
+    Object.assign(productionState, snap.productionState);
     snap.blocks.forEach(o => {
       const area = lineAreaByName[o.line];
       if(!area) return;
       const block = createBlock({
         start: parseInt(o.start, 10), span: parseInt(o.span, 10), buyerClass: o.buyerClass, buyer: o.buyer,
         item: o.item, po: o.po, qty: parseInt(o.qty, 10), ship: o.ship, risk: o.risk, status: o.status,
+        noRamp: o.noRamp, confirmed: o.confirmed, lockMode: o.lockMode,
       }, o.line, o.uid);
       area.appendChild(block);
     });
@@ -1628,8 +1836,6 @@
     queueData.length = 0;
     snap.queueData.forEach(q => queueData.push(q));
     renderQueue();
-    Object.keys(productionState).forEach(k => delete productionState[k]);
-    Object.assign(productionState, snap.productionState);
     closeDetail();
   }
   function undo(){
@@ -2022,6 +2228,8 @@
     positionBlock(el, start, newSpan);
     el.dataset.span = newSpan;
     delete productionState[el.dataset.uid];
+    unconfirmBlock(el);
+    renderBlockContent(el);
     refreshOverlapsForArea(el.parentElement);
     showToast(`${el.dataset.po} 일정 연장 · ${fmtDay(start)}~${fmtDay(start + newSpan - 1)}로 이어서 배정${capped ? ' (7/31 한도로 일부만 반영)' : ''}`);
   }
