@@ -1,0 +1,2018 @@
+<title>봉제라인 배정 콘솔</title>
+<style>
+  :root{
+    --bg:#e7eae4;
+    --surface:#f7f8f3;
+    --surface-2:#ffffff;
+    --line:#c9cdc1;
+    --line-soft:#daddd3;
+    --ink:#1e2422;
+    --ink-dim:#565f57;
+    --ink-faint:#818b7f;
+    --accent:#2f5169;
+    --accent-ink:#eef3f6;
+    --ok:#3f7d55;
+    --ok-bg:#e1ede3;
+    --warn:#a9722f;
+    --warn-bg:#f3e7d5;
+    --crit:#a8362e;
+    --crit-bg:#f5dfdc;
+    --sunday-bg:#dfd3c9;
+    --today-bg:#fbead9;
+    --b-mtrl:#4c6b8a;
+    --b-strauss:#5e7a4e;
+    --b-entire:#9c5b33;
+    --b-ambitions:#3f8583;
+    --b-vanguard:#a98a3e;
+    --shadow: 0 1px 2px rgba(30,36,34,.06), 0 6px 20px -8px rgba(30,36,34,.18);
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#141816;
+      --surface:#1b201d;
+      --surface-2:#212722;
+      --line:#333b34;
+      --line-soft:#2a312b;
+      --ink:#e9ebe4;
+      --ink-dim:#a7afa1;
+      --ink-faint:#727b6e;
+      --accent:#7fa6bf;
+      --accent-ink:#0f1b22;
+      --ok:#7fbd8f;
+      --ok-bg:#1f3324;
+      --warn:#d9a866;
+      --warn-bg:#3a2c18;
+      --crit:#e08278;
+      --crit-bg:#3c211e;
+      --sunday-bg:#262b23;
+      --today-bg:#3a2f20;
+      --b-mtrl:#7c9bbd;
+      --b-strauss:#8ca873;
+      --b-entire:#c9905f;
+      --b-ambitions:#6bb3b0;
+      --b-vanguard:#cdab5f;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px -8px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#141816; --surface:#1b201d; --surface-2:#212722; --line:#333b34; --line-soft:#2a312b;
+    --ink:#e9ebe4; --ink-dim:#a7afa1; --ink-faint:#727b6e; --accent:#7fa6bf; --accent-ink:#0f1b22;
+    --ok:#7fbd8f; --ok-bg:#1f3324; --warn:#d9a866; --warn-bg:#3a2c18; --crit:#e08278; --crit-bg:#3c211e;
+    --sunday-bg:#262b23; --today-bg:#3a2f20;
+    --b-mtrl:#7c9bbd; --b-strauss:#8ca873; --b-entire:#c9905f; --b-ambitions:#6bb3b0; --b-vanguard:#cdab5f;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px -8px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"]{
+    --bg:#e7eae4; --surface:#f7f8f3; --surface-2:#ffffff; --line:#c9cdc1; --line-soft:#daddd3;
+    --ink:#1e2422; --ink-dim:#565f57; --ink-faint:#818b7f; --accent:#2f5169; --accent-ink:#eef3f6;
+    --ok:#3f7d55; --ok-bg:#e1ede3; --warn:#a9722f; --warn-bg:#f3e7d5; --crit:#a8362e; --crit-bg:#f5dfdc;
+    --sunday-bg:#dfd3c9; --today-bg:#fbead9;
+    --b-mtrl:#4c6b8a; --b-strauss:#5e7a4e; --b-entire:#9c5b33; --b-ambitions:#3f8583; --b-vanguard:#a98a3e;
+    --shadow: 0 1px 2px rgba(30,36,34,.06), 0 6px 20px -8px rgba(30,36,34,.18);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--accent);color:var(--accent-ink);}
+
+  .app{max-width:1400px;margin:0 auto;padding:20px 24px 64px;}
+
+  /* ---------- header ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:16px 20px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    box-shadow:var(--shadow);margin-bottom:16px;
+  }
+  .brand{display:flex;flex-direction:column;gap:2px;margin-right:4px;}
+  .brand .eyebrow{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);
+  }
+  .brand h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em;}
+
+  .month-nav{display:flex;align-items:center;gap:8px;font-family:var(--mono);}
+  .month-nav button{
+    width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink);cursor:pointer;font-size:13px;
+  }
+  .month-nav button:hover{background:var(--line-soft);}
+  .month-nav .month-label{font-size:13.5px;font-weight:600;min-width:96px;text-align:center;}
+
+  .topbar .spacer{flex:1;}
+
+  .search{
+    display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);
+    border-radius:7px;padding:6px 10px;color:var(--ink-faint);font-size:13px;min-width:200px;
+  }
+  .search input{border:none;background:transparent;outline:none;color:var(--ink);font-size:13px;width:100%;font-family:var(--sans);}
+
+  .btn{
+    font-family:var(--sans);font-size:13.5px;font-weight:600;border-radius:7px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer;white-space:nowrap;
+  }
+  .btn:hover{background:var(--line-soft);}
+  .btn:focus-visible, button:focus-visible, [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);}
+  .btn.primary:hover{filter:brightness(1.06);}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--line);}
+  .tab{
+    font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--ink-dim);background:none;border:none;
+    padding:10px 6px;margin-right:18px;cursor:pointer;border-bottom:2px solid transparent;
+  }
+  .tab .count{
+    font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink-faint);margin-left:4px;
+  }
+  .tab.active{color:var(--ink);border-bottom-color:var(--accent);}
+  .tab:hover{color:var(--ink);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ---------- legend ---------- */
+  .legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .legend .group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .legend .label{font-size:11.5px;color:var(--ink-faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-right:2px;}
+  .chip{
+    display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:99px;
+    border:1px solid var(--line);background:var(--surface-2);cursor:pointer;color:var(--ink-dim);
+  }
+  .chip .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .chip.active{border-color:var(--ink);color:var(--ink);background:var(--line-soft);}
+  .chip.static{cursor:default;}
+  .legend .sep{width:1px;height:16px;background:var(--line);margin:0 4px;}
+
+  /* ---------- schedule board (CSS-grid + absolutely positioned, draggable blocks) ---------- */
+  .board-wrap{
+    border:1px solid var(--line);border-radius:10px;overflow:auto;background:var(--surface-2);box-shadow:var(--shadow);
+    max-height:74vh;
+  }
+  .board-grid{
+    display:grid;
+    grid-template-columns: 172px repeat(31, 56px);
+    position:relative;
+    width:max-content;
+    font-size:12px;
+  }
+  .today-line{
+    position:absolute;top:44px;bottom:0;pointer-events:none;
+    border-left:2px solid var(--accent);border-right:2px solid var(--accent);
+  }
+  .sunday-line{
+    position:absolute;top:44px;bottom:0;pointer-events:none;background:var(--sunday-bg);
+  }
+  .board-grid.other-month .blk,
+  .board-grid.other-month .idle-slot{display:none;}
+  .other-month-hint{
+    text-align:center;padding:40px 10px;color:var(--ink-faint);font-size:13px;
+    position:absolute;left:172px;right:0;top:44px;
+  }
+
+  .corner{
+    grid-column:1; grid-row:1;
+    position:sticky;top:0;left:0;z-index:4;background:var(--surface-2);
+    text-align:left;padding:8px 10px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);
+    border-right:1px solid var(--line);border-bottom:1px solid var(--line-soft);
+    display:flex;align-items:center;
+  }
+  .day-head{
+    grid-row:1;
+    position:sticky;top:0;z-index:3;background:var(--surface-2);text-align:center;
+    padding:6px 2px;font-family:var(--mono);border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft);
+  }
+  .day-head .dow{display:block;font-size:9px;color:var(--ink-faint);font-weight:500;}
+  .day-head .num{display:block;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .day-head.sunday{background:var(--sunday-bg);}
+  .day-head.sunday .num{color:var(--crit);}
+  .day-head.today{background:var(--today-bg);}
+  .day-head.today .num{color:var(--accent);}
+
+  .line-label{
+    grid-column:1;
+    position:sticky;left:0;z-index:1;background:var(--surface-2);
+    padding:9px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line-soft);
+  }
+  .line-label .lname{font-weight:700;font-size:13.5px;}
+  .line-label .team{font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-top:2px;}
+  .line-label .skill{font-size:10.5px;color:var(--ink-faint);margin-top:4px;line-height:1.35;}
+
+  .day-area{
+    grid-column: 2 / -1;
+    position:relative;border-bottom:1px solid var(--line-soft);
+  }
+
+  .blk{
+    position:absolute;top:4px;bottom:4px;border-radius:6px;padding:5px 9px 5px 7px;color:#fff;cursor:grab;
+    display:flex;flex-direction:column;gap:1px;overflow:hidden;border-left:3px solid transparent;
+    box-shadow:0 1px 2px rgba(0,0,0,.15);transition:filter .1s ease, box-shadow .1s ease;user-select:none;touch-action:none;
+    z-index:1;
+  }
+  .blk:hover{filter:brightness(1.08);}
+  .blk.dragging{cursor:grabbing;filter:brightness(1.12);box-shadow:0 6px 18px -4px rgba(0,0,0,.4);z-index:5;}
+  .blk .buyer{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;opacity:.85;text-transform:uppercase;}
+  .blk .item{font-weight:700;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .meta{font-size:10.5px;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .ship{font-size:10px;margin-top:auto;opacity:.85;font-variant-numeric:tabular-nums;}
+  .blk.risk-ok{border-left-color:#ffffffb0;}
+  .blk.risk-warn{border-left-color:var(--warn);}
+  .blk.risk-crit{border-left-color:var(--crit);}
+
+  .blk.b-mtrl{background:var(--b-mtrl);}
+  .blk.b-strauss{background:var(--b-strauss);}
+  .blk.b-entire{background:var(--b-entire);}
+  .blk.b-ambitions{background:var(--b-ambitions);}
+  .blk.b-vanguard{background:var(--b-vanguard);}
+
+  .blk.overlap{outline:2px dashed var(--crit);outline-offset:-2px;}
+  .blk.overlap::before{
+    content:"⚠ 겹침";position:absolute;top:-8px;right:3px;z-index:2;
+    background:var(--crit);color:#fff;font-size:9px;font-weight:700;letter-spacing:.02em;
+    padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+  .blk.dimmed{opacity:.25;}
+  .blk.halted{
+    background-image:repeating-linear-gradient(135deg, rgba(0,0,0,0) 0 6px, rgba(0,0,0,.18) 6px 12px);
+  }
+  .blk.halted::after{
+    content:"⏸ 중단";position:absolute;bottom:-8px;left:3px;z-index:2;
+    background:var(--ink);color:var(--surface);font-size:9px;font-weight:700;letter-spacing:.02em;
+    padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
+  }
+
+  .resize-handle{
+    position:absolute;top:0;right:0;bottom:0;width:9px;cursor:ew-resize;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .resize-handle::after{content:"";width:3px;height:18px;border-radius:2px;background:rgba(255,255,255,.55);}
+
+  .idle-slot{
+    position:absolute;top:4px;bottom:4px;border-radius:6px;border:1.5px dashed var(--line);
+    display:flex;align-items:center;justify-content:center;text-align:center;color:var(--ink-faint);
+    font-size:11px;padding:6px;cursor:default;z-index:1;
+  }
+  .idle-slot.target{border-color:var(--accent);color:var(--accent);}
+
+  /* ---------- queue table ---------- */
+  .queue-wrap{border:1px solid var(--line);border-radius:10px;overflow:auto;background:var(--surface-2);box-shadow:var(--shadow);}
+  table.queue{width:100%;border-collapse:collapse;font-size:13px;}
+  table.queue th{
+    text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-faint);padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface);
+    position:sticky;top:0;
+  }
+  table.queue td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
+  table.queue tr:last-child td{border-bottom:none;}
+  table.queue tr.removing{opacity:0;transform:translateX(8px);transition:opacity .25s ease, transform .25s ease;}
+  .qty{font-variant-numeric:tabular-nums;}
+  .badge{
+    display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;font-weight:700;
+    padding:3px 8px;border-radius:99px;white-space:nowrap;
+  }
+  .badge.ok{background:var(--ok-bg);color:var(--ok);}
+  .badge.warn{background:var(--warn-bg);color:var(--warn);}
+  .badge.crit{background:var(--crit-bg);color:var(--crit);}
+  .rec{font-size:12px;color:var(--ink-dim);}
+  .rec b{color:var(--ink);}
+  .rec .caution{display:block;color:var(--warn);font-size:11px;margin-top:1px;}
+  .assign-btn{
+    font-family:var(--sans);font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:6px;
+    border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;
+  }
+  .assign-btn:hover{background:var(--accent);color:var(--accent-ink);}
+
+  /* ---------- team cards ---------- */
+  .team-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(240px,1fr));gap:12px;}
+  .team-card{
+    background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);
+  }
+  .team-card .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .team-card .head .line{font-weight:700;font-size:14.5px;}
+  .team-card .head .members{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
+  .team-card .skills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+  .skill-tag{
+    font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--line-soft);color:var(--ink-dim);
+  }
+  .team-card .stats{display:flex;justify-content:space-between;align-items:flex-end;}
+  .team-card .avg{font-family:var(--mono);}
+  .team-card .avg .n{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .team-card .avg .u{font-size:10px;color:var(--ink-faint);}
+  .team-card svg{overflow:visible;}
+  .team-card.idle{border-style:dashed;}
+  .team-card.idle .head .line{color:var(--ink-faint);}
+
+  /* ---------- slide-over ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,24,22,.32);opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:10;
+  }
+  .overlay.open{opacity:1;pointer-events:auto;}
+  .detail{
+    position:fixed;top:0;right:0;height:100%;width:360px;max-width:90vw;background:var(--surface-2);
+    border-left:1px solid var(--line);box-shadow:-8px 0 30px -12px rgba(0,0,0,.3);
+    transform:translateX(100%);transition:transform .2s ease;z-index:11;padding:20px;overflow-y:auto;
+  }
+  .detail.open{transform:translateX(0);}
+  .detail .close{float:right;background:none;border:none;font-size:18px;color:var(--ink-faint);cursor:pointer;}
+  .detail h2{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--ink-faint);margin:18px 0 4px;}
+  .detail h2:first-of-type{margin-top:2px;}
+  .detail .val{font-size:15px;font-weight:600;}
+  .detail .row{display:flex;gap:10px;}
+  .detail .row > div{flex:1;}
+  .detail-actions{display:flex;gap:8px;margin:18px 0 22px;}
+  .edit-input{
+    width:100%;font-family:var(--sans);font-size:14px;font-weight:600;color:var(--ink);
+    background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;
+  }
+  .edit-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  select.edit-input{cursor:pointer;}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;bottom:22px;right:22px;background:var(--ink);color:var(--surface);padding:12px 18px;
+    border-radius:8px;font-size:13px;font-weight:600;box-shadow:var(--shadow);
+    transform:translateY(12px);opacity:0;transition:transform .2s ease, opacity .2s ease;z-index:20;
+  }
+  .toast.show{transform:translateY(0);opacity:1;}
+
+  /* ---------- centered modal (constraint settings / ship-risk popup) ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(20,24,22,.4);opacity:0;pointer-events:none;
+    transition:opacity .18s ease;z-index:30;
+  }
+  .modal-overlay.open{opacity:1;pointer-events:auto;}
+  .modal{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-46%);width:380px;max-width:90vw;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);
+    padding:22px;z-index:31;opacity:0;pointer-events:none;transition:opacity .18s ease, transform .18s ease;
+    max-height:80vh;overflow-y:auto;
+  }
+  .modal.open{opacity:1;pointer-events:auto;transform:translate(-50%,-50%);}
+  .modal h3{margin:0 0 16px;font-size:16px;}
+  .modal .close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:16px;color:var(--ink-faint);cursor:pointer;}
+  .modal-field{margin-bottom:14px;display:flex;flex-direction:column;gap:5px;}
+  .modal-field label{font-size:12px;color:var(--ink-dim);}
+  .modal-field input, .modal-field select{
+    font-family:var(--sans);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;
+    background:var(--surface);color:var(--ink);width:90px;
+  }
+  .modal-field select{width:100%;cursor:pointer;}
+  .modal-field textarea{
+    font-family:var(--sans);font-size:13px;padding:8px 9px;border:1px solid var(--line);border-radius:6px;
+    background:var(--surface);color:var(--ink);width:100%;resize:vertical;
+  }
+  .modal-check{display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;color:var(--ink-dim);}
+  .modal-subhead{
+    font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-faint);
+    margin:18px 0 12px;padding-top:14px;border-top:1px solid var(--line-soft);
+  }
+  .prompt-item{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 10px;
+    border:1px solid var(--line-soft);border-radius:7px;margin-bottom:8px;background:var(--surface);font-size:12.5px;
+  }
+  .prompt-item .pline{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;}
+  .prompt-item .ptext{margin-top:2px;color:var(--ink);line-height:1.4;}
+  .prompt-remove{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:14px;flex:none;padding:0 2px;}
+  .prompt-remove:hover{color:var(--crit);}
+  .prompt-empty{font-size:12px;color:var(--ink-faint);margin-bottom:12px;}
+  .modal-actions{display:flex;gap:8px;margin-top:18px;}
+  .risk-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;
+    border:1px solid var(--line-soft);border-radius:7px;margin-bottom:8px;background:var(--surface);font-size:13px;
+    cursor:pointer;transition:background .1s ease;
+  }
+  .risk-item:hover{background:var(--line-soft);}
+  .risk-item .risk-info{flex:1;min-width:0;}
+  .risk-item .rp{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .risk-item .rd{font-size:11px;color:var(--ink-faint);margin-top:1px;}
+  .risk-extend-btn{
+    font-family:var(--sans);font-size:11.5px;font-weight:700;padding:6px 10px;border-radius:6px;
+    border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;white-space:nowrap;flex:none;
+  }
+  .risk-extend-btn:hover{background:var(--accent);color:var(--accent-ink);}
+  .risk-empty{text-align:center;padding:24px 10px;color:var(--ink-faint);font-size:13px;}
+
+  .line-pick-item{
+    display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;
+    border:1px solid var(--line-soft);border-radius:7px;margin-bottom:8px;background:var(--surface);font-size:13px;
+  }
+  .line-pick-item:first-child{border-color:var(--accent);}
+  .lp-info{flex:1;min-width:0;}
+  .lp-name{font-weight:700;}
+  .lp-meta{font-size:11px;color:var(--ink-faint);margin-top:1px;}
+  .lp-rec{
+    display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent);
+    background:var(--accent-ink);padding:1px 6px;border-radius:99px;margin-left:6px;vertical-align:middle;
+  }
+  .line-pick-btn{
+    font-family:var(--sans);font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:6px;
+    border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;white-space:nowrap;flex:none;
+  }
+  .line-pick-btn:hover{background:var(--accent);color:var(--accent-ink);}
+
+  .hint{font-size:12px;color:var(--ink-faint);margin:0 0 12px;}
+
+  /* ---------- excel/csv import ---------- */
+  .import-row{
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:10px;
+  }
+  .import-row label.btn{margin:0;}
+  .import-hint{font-size:12px;color:var(--ink-faint);}
+  .divider-or{
+    display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:var(--ink-faint);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  }
+  .divider-or::before, .divider-or::after{content:"";flex:1;height:1px;background:var(--line);}
+  .rate-fill-cell{display:flex;align-items:center;gap:6px;}
+  .rate-fill-input{
+    width:88px;font-family:var(--sans);font-size:12.5px;padding:6px 8px;border:1px solid var(--crit);
+    border-radius:6px;background:var(--surface);color:var(--ink);
+  }
+  .rate-fill-label{font-size:10.5px;color:var(--crit);font-weight:700;white-space:nowrap;}
+
+  /* ---------- registration form ---------- */
+  .reg-form{
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:14px;
+  }
+  .reg-form .field{display:flex;flex-direction:column;gap:4px;}
+  .reg-form label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-faint);}
+  .reg-form input{
+    font-family:var(--sans);font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;
+    background:var(--surface);color:var(--ink);width:132px;
+  }
+  .reg-form input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+  .reg-form .field.qty input, .reg-form .field.rate input{width:104px;font-variant-numeric:tabular-nums;}
+  .reg-form .field.po input{width:96px;}
+  .reg-form .estimate{
+    margin-left:auto;text-align:right;font-family:var(--mono);font-size:12px;color:var(--ink-dim);
+    display:flex;flex-direction:column;gap:2px;padding-right:6px;
+  }
+  .reg-form .estimate b{color:var(--ink);font-size:13.5px;}
+  .reg-form .estimate .sub{color:var(--ink-faint);font-size:10.5px;}
+  .reg-form .estimate .sub.buffer-warn{color:var(--crit);font-weight:700;}
+
+  /* ---------- production tracking (detail panel) ---------- */
+  .prod-box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:6px;background:var(--surface);}
+  .prod-box .plan-line{font-size:12px;color:var(--ink-dim);margin-bottom:8px;font-variant-numeric:tabular-nums;}
+  .prog-track{height:7px;border-radius:99px;background:var(--line-soft);overflow:hidden;margin-bottom:6px;}
+  .prog-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .25s ease;}
+  .prod-box .prog-label{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-faint);font-variant-numeric:tabular-nums;margin-bottom:12px;}
+  .prod-box .eta{
+    display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:7px;
+    background:var(--surface-2);border:1px solid var(--line-soft);margin-bottom:12px;
+  }
+  .prod-box .eta .val{font-family:var(--mono);font-weight:700;font-size:13.5px;}
+  .prod-box .eta .delta{font-family:var(--mono);font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;}
+  .prod-box .eta .delta.ok{background:var(--ok-bg);color:var(--ok);}
+  .prod-box .eta .delta.warn{background:var(--warn-bg);color:var(--warn);}
+  .prod-box .eta .delta.crit{background:var(--crit-bg);color:var(--crit);}
+  .prod-chart-wrap{overflow-x:auto;margin-bottom:12px;padding:8px 10px 4px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;}
+  .daily-table-wrap{max-height:220px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line-soft);border-radius:7px;margin-bottom:4px;}
+  table.daily-table{width:100%;border-collapse:collapse;font-size:12px;}
+  table.daily-table th{
+    position:sticky;top:0;text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-faint);background:var(--surface-2);padding:6px 8px;border-bottom:1px solid var(--line-soft);
+  }
+  table.daily-table td{padding:4px 8px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums;}
+  table.daily-table tr:last-child td{border-bottom:none;}
+  table.daily-table tr.future td{color:var(--ink-faint);}
+  table.daily-table .daily-input{
+    width:84px;font-family:var(--sans);font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;
+    background:var(--surface);color:var(--ink);
+  }
+  .halt-btn{
+    width:100%;margin-top:10px;padding:8px;border-radius:6px;font-family:var(--sans);
+    font-size:12.5px;font-weight:700;border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer;
+  }
+  .halt-btn:hover{background:var(--crit);color:#fff;}
+</style>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="eyebrow">Kim Lien · 장갑부</span>
+      <h1>봉제라인 배정 콘솔</h1>
+    </div>
+    <div class="month-nav">
+      <button id="monthPrev" aria-label="이전 달">‹</button>
+      <span class="month-label" id="monthLabel">2026년 7월</span>
+      <button id="monthNext" aria-label="다음 달">›</button>
+    </div>
+    <div class="search">
+      🔎 <input type="text" placeholder="오더번호 · 바이어 · 품목 검색" />
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="constraintBtn">제약조건 설정</button>
+    <button class="btn" id="undoBtn" title="실행 취소 (Ctrl+Z)">↺ 실행 취소</button>
+    <button class="btn primary" id="autoAssignBtn">⚡ 자동배정 실행</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="board">스케줄 보드</button>
+    <button class="tab" data-tab="queue">미배정 오더 <span class="count" id="queueCount">(5)</span></button>
+    <button class="tab" data-tab="teams">조 편성 현황</button>
+  </div>
+
+  <!-- ================= BOARD ================= -->
+  <div class="panel active" id="panel-board">
+    <div class="legend">
+      <span class="label">바이어 필터</span>
+      <div class="group" id="buyerLegend">
+        <span class="chip" data-buyer="mtrl"><i class="dot" style="background:var(--b-mtrl)"></i>MTRL</span>
+        <span class="chip" data-buyer="strauss"><i class="dot" style="background:var(--b-strauss)"></i>STRAUSS</span>
+        <span class="chip" data-buyer="entire"><i class="dot" style="background:var(--b-entire)"></i>ENTIRE</span>
+        <span class="chip" data-buyer="ambitions"><i class="dot" style="background:var(--b-ambitions)"></i>AMBITIONS</span>
+      </div>
+      <span class="sep"></span>
+      <span class="label">긴급도</span>
+      <div class="group" id="riskLegend">
+        <span class="chip" data-risk="crit"><i class="dot" style="background:var(--crit)"></i>D-7 이내</span>
+        <span class="chip" data-risk="warn"><i class="dot" style="background:var(--warn)"></i>D-14 이내</span>
+        <span class="chip" data-risk="ok"><i class="dot" style="background:#ffffffb0;border:1px solid var(--line)"></i>여유</span>
+      </div>
+    </div>
+
+    <p class="hint">바를 드래그하면 라인/날짜 이동, 오른쪽 끝을 드래그하면 기간 확장·축소가 됩니다. 클릭하면 세부 내용을 직접 수정할 수 있습니다.</p>
+    <div class="board-wrap">
+      <div class="board-grid" id="boardGrid"></div>
+    </div>
+  </div>
+
+  <!-- ================= QUEUE ================= -->
+  <div class="panel" id="panel-queue">
+    <div class="import-row">
+      <label class="btn" for="importFile">📄 엑셀/CSV로 오더 가져오기</label>
+      <input type="file" id="importFile" accept=".csv,.xlsx" style="display:none" />
+      <span class="import-hint">헤더행에 오더번호·바이어·품목·수량·납기일(·일일생산량) 열이 있으면 자동 인식합니다. 일일생산량이 빠져 있으면 배정 전에 큐에서 직접 입력하도록 표시됩니다.</span>
+    </div>
+    <div class="divider-or"><span>또는 직접 입력</span></div>
+    <p class="hint">총주문수량과 일일예상생산량을 입력하면 소요일수·완료예정일을 자동계산해 큐에 등록합니다.</p>
+    <div class="reg-form" id="regForm">
+      <div class="field po"><label>오더번호</label><input type="text" id="reg-po" placeholder="#33810" /></div>
+      <div class="field"><label>바이어</label><input type="text" id="reg-buyer" placeholder="STRAUSS" /></div>
+      <div class="field"><label>품목</label><input type="text" id="reg-item" placeholder="ACTIVE PANTS" /></div>
+      <div class="field qty"><label>총주문수량 (EA)</label><input type="number" id="reg-qty" placeholder="4800" min="1" /></div>
+      <div class="field rate"><label>일일예상생산량 (EA/일)</label><input type="number" id="reg-rate" placeholder="480" min="1" /></div>
+      <div class="field"><label>납기일</label><input type="date" id="reg-due" value="2026-08-20" /></div>
+      <div class="estimate" id="regEstimate">
+        <span>소요일수 산정 대기</span>
+        <span class="sub">수량 · 생산량을 입력하세요</span>
+      </div>
+      <button class="btn primary" id="regSubmit">미배정 큐에 등록</button>
+    </div>
+    <div class="queue-wrap">
+      <table class="queue">
+        <thead>
+          <tr>
+            <th>긴급도</th><th>오더번호</th><th>바이어</th><th>품목</th><th>수량</th><th>일일생산량 (소요일수)</th><th>납기일</th><th>추천 라인</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="queueBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ================= TEAMS ================= -->
+  <div class="panel" id="panel-teams">
+    <p class="hint">라인 적합성은 설비가 아니라 배치된 조의 숙련 품목과 최근 생산성 이력을 기준으로 판단합니다.</p>
+    <div class="team-grid" id="teamGrid"></div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="detail" id="detail">
+  <button class="close" id="detailClose" aria-label="닫기">✕</button>
+  <h2>오더번호</h2><input class="edit-input" id="d-po" />
+  <div class="row">
+    <div><h2>바이어</h2><input class="edit-input" id="d-buyer" /></div>
+    <div><h2>총수량 (EA)</h2><input class="edit-input" type="number" min="1" id="d-qty" /></div>
+  </div>
+  <h2>품목</h2><input class="edit-input" id="d-item" />
+  <div class="row">
+    <div><h2>배정 라인</h2><select class="edit-input" id="d-line"></select></div>
+    <div><h2>상태</h2>
+      <select class="edit-input" id="d-risk">
+        <option value="ok">정상</option>
+        <option value="warn">주의</option>
+        <option value="crit">위험</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div><h2>시작일 (일)</h2><input class="edit-input" type="number" min="1" max="31" id="d-start" /></div>
+    <div><h2>소요일수</h2><input class="edit-input" type="number" min="1" max="31" id="d-span" /></div>
+  </div>
+  <h2>출고예정일</h2><input class="edit-input" type="date" id="d-ship" />
+  <h2>메모</h2><input class="edit-input" id="d-status" />
+  <div class="detail-actions">
+    <button class="btn" id="detailCancel" style="flex:1">취소</button>
+    <button class="btn primary" id="detailSave" style="flex:1">저장</button>
+  </div>
+  <h2>실적 관리</h2>
+  <div class="prod-box" id="prodBox">—</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modalOverlay"></div>
+<div class="modal" id="settingsModal">
+  <button class="close" id="settingsClose" aria-label="닫기">✕</button>
+  <h3>제약조건 설정</h3>
+  <div class="modal-field">
+    <label>출하일 임박 경고 기준 (D-N 이내 · 미완료 시 팝업)</label>
+    <input type="number" id="cfg-shipWarnDays" min="1" max="30" value="7" />
+  </div>
+  <div class="modal-field">
+    <label>배정 시 최소 여유일수 (완료예정일 → 납기일)</label>
+    <input type="number" id="cfg-bufferDays" min="0" max="30" value="5" />
+  </div>
+  <label class="modal-check"><input type="checkbox" id="cfg-dueFirst" checked /> 납기일 준수 최우선</label>
+  <label class="modal-check"><input type="checkbox" id="cfg-history" checked /> 과거 생산성 이력 반영</label>
+  <label class="modal-check"><input type="checkbox" id="cfg-skillWarn" checked /> 라인 숙련도 불일치 시 경고 표시</label>
+
+  <h2 class="modal-subhead">담당자별 추가 조건</h2>
+  <div class="modal-field">
+    <label>담당 조/라인</label>
+    <select id="cfg-promptLine"><option value="전체 공통">전체 공통</option></select>
+  </div>
+  <div class="modal-field">
+    <label>조건 프롬프트 (자유 입력)</label>
+    <textarea id="cfg-promptText" rows="2" placeholder="예: 이 조는 금요일 오후엔 설비 점검으로 배정 불가"></textarea>
+  </div>
+  <button class="btn" id="cfg-promptAdd" style="margin-bottom:14px;">+ 조건 추가</button>
+  <div id="cfg-promptList"></div>
+
+  <div class="modal-actions">
+    <button class="btn" id="settingsCancel" style="flex:1">취소</button>
+    <button class="btn primary" id="settingsSave" style="flex:1">저장</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="riskModalOverlay"></div>
+<div class="modal" id="riskModal">
+  <button class="close" id="riskModalClose" aria-label="닫기">✕</button>
+  <h3>⚠ 출하 임박 · 미완료 오더</h3>
+  <div id="riskModalBody"></div>
+  <div class="modal-actions"><button class="btn primary" id="riskModalOk" style="flex:1">확인</button></div>
+</div>
+
+<div class="modal-overlay" id="lineSelectOverlay"></div>
+<div class="modal" id="lineSelectModal">
+  <button class="close" id="lineSelectClose" aria-label="닫기">✕</button>
+  <h3 id="lineSelectTitle">배정 라인 선택</h3>
+  <p class="hint">숙련 품목 일치 여부와 최근 생산성 이력 기준으로 추천 순서대로 정렬했습니다.</p>
+  <div id="lineSelectBody"></div>
+</div>
+
+<div class="modal-overlay" id="quickAssignOverlay"></div>
+<div class="modal" id="quickAssignModal">
+  <button class="close" id="quickAssignClose" aria-label="닫기">✕</button>
+  <h3 id="quickAssignTitle">미배정 오더 선택</h3>
+  <p class="hint">납기 긴급도 순으로 정렬했고, 이 라인의 숙련 품목과 맞는 오더는 추천 표시됩니다.</p>
+  <div id="quickAssignBody"></div>
+</div>
+
+<script>
+  // ---------- calendar basics (July 2026; 1st is a Wednesday; Sundays are non-working) ----------
+  const TODAY = 16;
+  const dow = ['일','월','화','수','목','금','토'];
+  const firstDow = 3;
+  const DAY_W = 56;
+  function isSunday(day){ return ((firstDow + day - 1) % 7) === 0; }
+  function workdaysBetween(a, b){
+    if(b < a) return 0;
+    let n = 0;
+    for(let d = a; d <= b; d++) if(!isSunday(d)) n++;
+    return n;
+  }
+  function addWorkdays(fromDay, n){
+    let d = fromDay, left = n;
+    while(left > 0){ d++; if(!isSunday(d)) left--; }
+    return d;
+  }
+  function fmtDay(day){ return `7/${day}`; }
+  function isoToShip(iso){ const [y,m,d] = iso.split('-'); return `${parseInt(m,10)}/${parseInt(d,10)}`; }
+
+  // ---------- ramp-up curve: a new run doesn't hit full speed on day 1 ----------
+  // First workdays run at a fraction of the steady-state rate (new style, line not yet
+  // up to speed); from the 4th workday on it's treated as full rate. `dailyRate` inputs
+  // everywhere in this app mean the STEADY-STATE rate -- actual daily output ramps up to it.
+  const RAMP_CURVE = [0.5, 0.7, 0.85];
+  function rampFraction(workdayIndex){ return workdayIndex < RAMP_CURVE.length ? RAMP_CURVE[workdayIndex] : 1; }
+  function daysForRamped(qtyNum, steadyRate){
+    let days = 0, cum = 0;
+    while(cum < qtyNum){
+      cum += steadyRate * rampFraction(days);
+      days++;
+    }
+    return Math.max(1, days);
+  }
+  function buyerClassFor(name){
+    const map = { MTRL:'b-mtrl', STRAUSS:'b-strauss', ENTIRE:'b-entire', AMBITIONS:'b-ambitions', VANGUARD:'b-vanguard' };
+    const key = Object.keys(map).find(k => (name || '').toUpperCase().includes(k));
+    return key ? map[key] : 'b-mtrl';
+  }
+
+  // ---------- header row (day numbers, sticky) ----------
+  // NOTE: all production math (isSunday/workdaysBetween/addWorkdays/TODAY above) is
+  // fixed to July 2026 -- that's the only month with real sample data. The calendar
+  // header below is a separate, independently-navigable "view" on top of it: browsing
+  // to another month changes what's *displayed* (day columns, sunday shading, today
+  // marker) but never touches the underlying schedule data or math.
+  const REAL_MONTH = { year: 2026, month: 7, day: TODAY };
+  let viewYear = REAL_MONTH.year, viewMonth = REAL_MONTH.month;
+  function daysInViewMonth(y, m){ return new Date(y, m, 0).getDate(); }
+  function viewDow(y, m, d){ return new Date(y, m - 1, d).getDay(); } // 0=Sun..6=Sat, matches `dow` array
+
+  const boardGrid = document.getElementById('boardGrid');
+  const corner = document.createElement('div');
+  corner.className = 'corner';
+  corner.textContent = 'LINE / 조';
+  boardGrid.appendChild(corner);
+
+  function renderCalendarHeader(){
+    boardGrid.querySelectorAll('.day-head, .today-line, .sunday-line, .other-month-hint').forEach(el => el.remove());
+    const dim = daysInViewMonth(viewYear, viewMonth);
+    boardGrid.style.gridTemplateColumns = `172px repeat(${dim}, ${DAY_W}px)`;
+    const isRealMonth = viewYear === REAL_MONTH.year && viewMonth === REAL_MONTH.month;
+    boardGrid.classList.toggle('other-month', !isRealMonth);
+
+    for(let d = 1; d <= dim; d++){
+      const w = viewDow(viewYear, viewMonth, d);
+      if(w === 0){
+        const line = document.createElement('div');
+        line.className = 'sunday-line';
+        line.style.left = (172 + (d - 1) * DAY_W) + 'px';
+        line.style.width = DAY_W + 'px';
+        boardGrid.appendChild(line);
+      }
+      const head = document.createElement('div');
+      head.className = 'day-head';
+      head.style.gridColumn = d + 1;
+      if(w === 0) head.classList.add('sunday');
+      if(isRealMonth && d === REAL_MONTH.day) head.classList.add('today');
+      head.innerHTML = `<span class="dow">${dow[w]}</span><span class="num">${d}</span>`;
+      boardGrid.appendChild(head);
+    }
+    if(isRealMonth){
+      const todayLine = document.createElement('div');
+      todayLine.className = 'today-line';
+      todayLine.style.left = (172 + (REAL_MONTH.day - 1) * DAY_W) + 'px';
+      todayLine.style.width = DAY_W + 'px';
+      boardGrid.appendChild(todayLine);
+    } else {
+      const hint = document.createElement('div');
+      hint.className = 'other-month-hint';
+      hint.textContent = '이 목업의 샘플 배정 데이터는 2026년 7월 기준입니다 · 다른 달은 빈 캘린더로 표시됩니다';
+      boardGrid.appendChild(hint);
+    }
+    document.getElementById('monthLabel').textContent = `${viewYear}년 ${viewMonth}월`;
+  }
+  renderCalendarHeader();
+
+  document.getElementById('monthPrev').addEventListener('click', () => {
+    viewMonth--; if(viewMonth < 1){ viewMonth = 12; viewYear--; }
+    renderCalendarHeader();
+  });
+  document.getElementById('monthNext').addEventListener('click', () => {
+    viewMonth++; if(viewMonth > 12){ viewMonth = 1; viewYear++; }
+    renderCalendarHeader();
+  });
+
+  // ---------- line/order data (start = day-of-month, span = days) ----------
+  const lineDefs = [
+    { name:'LINE 1', team:'1조 · 8명', skill:'숙련: PANTS 전종', orders:[
+      { start:1, span:9, buyerClass:'b-mtrl', buyer:'MTRL', item:'ACTIVE PANTS', po:'#27779', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
+      { start:13, span:8, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485', qty:5111, ship:'2026-08-11', risk:'warn', status:'납기 임박 주의' },
+      { start:25, span:6, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485-2', qty:7871, ship:'2026-08-14', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 2', team:'2조 · 7명', skill:'숙련: PANTS', orders:[] },
+    { name:'LINE 3', team:'3조 · 9명', skill:'숙련: SHIRT / JACKET', orders:[
+      { start:1, span:3, buyerClass:'b-mtrl', buyer:'MTRL', item:'Vanguard Softshell Combat Shirt', po:'#480', qty:27, ship:'2026-07-20', risk:'ok', status:'정상 진행' },
+      { start:4, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'Vanguard Softshell Combat Shirt', po:'#2000', qty:10, ship:'2026-07-23', risk:'ok', status:'정상 진행' },
+      { start:18, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'YUKON JACKET', po:'#31640', qty:15820, ship:'2026-08-05', risk:'crit', status:'대량 오더 · 납기 리스크 높음' },
+    ]},
+    { name:'LINE 4', team:'4조 · 8명', skill:'숙련: PANTS', orders:[
+      { start:2, span:5, buyerClass:'b-mtrl', buyer:'MTRL', item:'MBDU PANTS', po:'#1840', qty:7, ship:'2026-07-23', risk:'ok', status:'정상 진행' },
+      { start:10, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MBDU PANTS', po:'#8900', qty:36, ship:'2026-08-28', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 5', team:'5조 · 8명', skill:'숙련: PANTS / ZIP-OFF', orders:[
+      { start:1, span:8, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU PANTS', po:'#350', qty:9, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
+      { start:10, span:7, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Trail Pants Men Zip Off', po:'#2100', qty:8, ship:'2026-08-02', risk:'warn', status:'납기 임박 주의' },
+      { start:20, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MCDU PANTS', po:'#10680', qty:46, ship:'2026-09-18', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 6', team:'6조 · 7명', skill:'숙련: ZIP-OFF', orders:[
+      { start:2, span:5, buyerClass:'b-strauss', buyer:'STRAUSS 6차', item:'Zip Off Pants', po:'#1545', qty:4, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
+      { start:7, span:7, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'Zip Off', po:'#555', qty:11, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
+      { start:14, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'Vanguard Pants', po:'#2140', qty:11, ship:'2026-08-28', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 7', team:'7조 · 8명', skill:'숙련: SHORTS', orders:[
+      { start:1, span:6, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Worker', po:'#475', qty:6, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+      { start:7, span:7, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Worker', po:'#4055', qty:11, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+      { start:25, span:7, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Champion', po:'#2083', qty:7, ship:'2026-09-13', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 8', team:'8조 · 6명', skill:'숙련: SUSPENDER', orders:[
+      { start:2, span:8, buyerClass:'b-mtrl', buyer:'MTRL', item:'Motion Suspenders', po:'#7800', qty:24, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
+      { start:22, span:9, buyerClass:'b-strauss', buyer:'STRAUSS 6차', item:'Motion Suspenders', po:'#11900', qty:6, ship:'2026-09-30', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 9', team:'9조 · 7명', skill:'숙련: SUSPENDER', orders:[
+      { start:9, span:7, buyerClass:'b-strauss', buyer:'STRAUSS 6차', item:'Active Suspender', po:'#3756', qty:9, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
+      { start:20, span:8, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'Active Suspender', po:'#4512', qty:11, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 10', team:'10조 · 8명', skill:'숙련: PANTS (낮음)', idleSlot:{ start:5, span:20 }, orders:[] },
+    { name:'LINE 11', team:'11조 · 8명', skill:'숙련: PANTS 전종', orders:[
+      { start:1, span:9, buyerClass:'b-mtrl', buyer:'MTRL', item:'ACTIVE PANTS', po:'#27779-b', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
+      { start:18, span:7, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485-b', qty:7871, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+    ]},
+    { name:'LINE 12', team:'12조 · 7명', skill:'숙련: COMBAT SHIRT', orders:[
+      { start:1, span:4, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU Combat Shirts', po:'#200', qty:4, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
+      { start:9, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MCDU Combat Shirts', po:'#8620', qty:26, ship:'2026-07-24', risk:'warn', status:'납기 임박 주의' },
+      { start:20, span:4, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU Combat Shirts', po:'#876', qty:4, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+    ]},
+  ];
+
+  let uidCounter = 0;
+  const lineAreaByName = {};
+
+  function positionBlock(el, start, span){
+    el.style.left = ((start - 1) * DAY_W + 3) + 'px';
+    el.style.width = (span * DAY_W - 6) + 'px';
+  }
+
+  // re-derives which blocks in a single line overlap in date range and flags them
+  function refreshOverlapsForArea(area){
+    if(!area) return;
+    const blocks = [...area.querySelectorAll('.blk')];
+    blocks.forEach(b => b.classList.remove('overlap'));
+    for(let i = 0; i < blocks.length; i++){
+      const a1 = parseInt(blocks[i].dataset.start, 10), a2 = a1 + parseInt(blocks[i].dataset.span, 10) - 1;
+      for(let j = i + 1; j < blocks.length; j++){
+        const b1 = parseInt(blocks[j].dataset.start, 10), b2 = b1 + parseInt(blocks[j].dataset.span, 10) - 1;
+        if(a1 <= b2 && b1 <= a2){
+          blocks[i].classList.add('overlap');
+          blocks[j].classList.add('overlap');
+        }
+      }
+    }
+  }
+
+  function createBlock(o, lineLabel, forceUid){
+    const div = document.createElement('div');
+    div.className = `blk ${o.buyerClass} risk-${o.risk}`;
+    positionBlock(div, o.start, o.span);
+    div.dataset.uid = forceUid || ('b' + (++uidCounter));
+    div.dataset.po = o.po;
+    div.dataset.buyer = o.buyer;
+    div.dataset.buyerClass = o.buyerClass;
+    div.dataset.item = o.item;
+    div.dataset.qty = o.qty;
+    div.dataset.ship = o.ship;
+    div.dataset.status = o.status;
+    div.dataset.risk = o.risk;
+    div.dataset.start = o.start;
+    div.dataset.span = o.span;
+    div.dataset.line = lineLabel;
+    div.dataset.noRamp = o.noRamp ? 'true' : 'false';
+    renderBlockContent(div);
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    div.appendChild(handle);
+    attachDrag(div, handle);
+    div.addEventListener('click', (e) => {
+      if(div._justDragged || e.target === handle) return;
+      openDetail(div);
+    });
+    return div;
+  }
+
+  function renderBlockContent(div){
+    const existingHandle = div.querySelector('.resize-handle');
+    const qtyFmt = Number(div.dataset.qty).toLocaleString() + ' EA';
+    div.title = `${div.dataset.buyer} · ${div.dataset.item} · ${div.dataset.po} · ${qtyFmt} · 출고 ${isoToShip(div.dataset.ship)}`;
+    div.innerHTML = `<span class="buyer">${div.dataset.buyer}</span><span class="item">${div.dataset.item}</span><span class="meta">${div.dataset.po} · ${qtyFmt}</span><span class="ship">출고 ${isoToShip(div.dataset.ship)}</span>`;
+    if(existingHandle) div.appendChild(existingHandle);
+  }
+
+  function createIdleSlot(start, span, isTarget, id){
+    const div = document.createElement('div');
+    div.className = 'idle-slot' + (isTarget ? ' target' : '');
+    if(id) div.id = id;
+    positionBlock(div, start, span);
+    div.textContent = isTarget ? '자동배정 대상 · 유휴 구간' : '배정 대기 · 라인 유휴';
+    return div;
+  }
+
+  function renderBoard(){
+    lineDefs.forEach((line, i) => {
+      const rowIndex = i + 2;
+      const label = document.createElement('div');
+      label.className = 'line-label';
+      label.style.gridRow = rowIndex;
+      label.innerHTML = `<div class="lname">${line.name}</div><div class="team">${line.team}</div><div class="skill">${line.skill}</div>`;
+      boardGrid.appendChild(label);
+
+      const area = document.createElement('div');
+      area.className = 'day-area';
+      area.style.gridRow = rowIndex;
+      const lineLabel = `${line.name} · ${line.team.split(' · ')[0]}`;
+      area.dataset.line = lineLabel;
+      boardGrid.appendChild(area);
+      lineAreaByName[lineLabel] = area;
+
+      // clicking empty space on a line/day opens a quick-assign picker for that slot
+      area.addEventListener('click', (e) => {
+        if(e.target !== area && !e.target.classList.contains('idle-slot')) return; // a real block was clicked
+        if(boardGrid.classList.contains('other-month')){
+          showToast('배정 데이터는 2026년 7월 기준입니다 · 7월로 이동 후 다시 시도하세요');
+          return;
+        }
+        const rect = area.getBoundingClientRect();
+        const day = Math.max(1, Math.min(31, Math.floor((e.clientX - rect.left) / DAY_W) + 1));
+        openQuickAssign(lineLabel, day);
+      });
+
+      if(line.idleSlot){
+        area.appendChild(createIdleSlot(line.idleSlot.start, line.idleSlot.span, true, 'line10-slot'));
+      }
+      line.orders.forEach(o => area.appendChild(createBlock(o, lineLabel)));
+      refreshOverlapsForArea(area);
+    });
+    boardGrid.style.gridTemplateRows = `44px repeat(${lineDefs.length}, 72px)`;
+  }
+  renderBoard();
+
+  // ---------- drag to move / drag right edge to resize ----------
+  // Note: the block is never reparented to a new row mid-drag (only once, on drop) --
+  // reparenting an element that currently holds pointer capture silently breaks that
+  // capture in most browsers, which would strand the block with pointer-events:none
+  // and make it undraggable afterwards.
+  function attachDrag(blk, handle){
+    let mode = null, startX = 0, startY = 0, origLeft = 0, origWidth = 0;
+    function begin(e, m){
+      mode = m;
+      startX = e.clientX;
+      startY = e.clientY;
+      origLeft = parseFloat(blk.style.left);
+      origWidth = parseFloat(blk.style.width);
+      blk.setPointerCapture(e.pointerId);
+      blk.classList.add('dragging');
+      e.stopPropagation();
+    }
+    function end(e){
+      if(!mode) return;
+      blk.classList.remove('dragging');
+      blk.style.transform = '';
+      pushUndo();
+      if(mode === 'move'){
+        const prevArea = blk.parentElement;
+        const prevPE = blk.style.pointerEvents;
+        blk.style.pointerEvents = 'none';
+        const target = document.elementsFromPoint(e.clientX, e.clientY).find(el => el.classList && el.classList.contains('day-area'));
+        blk.style.pointerEvents = prevPE;
+        if(target && target !== blk.parentElement) target.appendChild(blk);
+        snapMove(blk);
+        refreshOverlapsForArea(prevArea);
+        refreshOverlapsForArea(blk.parentElement);
+      } else {
+        snapResize(blk);
+        refreshOverlapsForArea(blk.parentElement);
+      }
+      mode = null;
+      setTimeout(() => { blk._justDragged = false; }, 0);
+    }
+    blk.addEventListener('pointerdown', (e) => { if(e.target !== handle) begin(e, 'move'); });
+    handle.addEventListener('pointerdown', (e) => begin(e, 'resize'));
+    blk.addEventListener('pointermove', (e) => {
+      if(!mode) return;
+      blk._justDragged = true;
+      const dx = e.clientX - startX;
+      if(mode === 'move'){
+        blk.style.left = (origLeft + dx) + 'px';
+        blk.style.transform = `translateY(${e.clientY - startY}px)`;
+      } else {
+        blk.style.width = Math.max(DAY_W - 6, origWidth + dx) + 'px';
+      }
+    });
+    blk.addEventListener('pointerup', end);
+    blk.addEventListener('pointercancel', end);
+  }
+
+  function snapMove(blk){
+    let start = Math.round(parseFloat(blk.style.left) / DAY_W) + 1;
+    const span = parseInt(blk.dataset.span, 10);
+    start = Math.max(1, Math.min(32 - span, start));
+    positionBlock(blk, start, span);
+    blk.dataset.start = start;
+    blk.dataset.line = blk.parentElement.dataset.line;
+    delete productionState[blk.dataset.uid];
+    showToast(`${blk.dataset.po} → ${blk.dataset.line} · ${fmtDay(start)}~${fmtDay(start + span - 1)}로 이동`);
+  }
+  function snapResize(blk){
+    const start = parseInt(blk.dataset.start, 10);
+    let span = Math.round((parseFloat(blk.style.width) + 6) / DAY_W);
+    span = Math.max(1, Math.min(32 - start, span));
+    positionBlock(blk, start, span);
+    blk.dataset.span = span;
+    delete productionState[blk.dataset.uid];
+    showToast(`${blk.dataset.po} 기간 조정 · ${span}일 (${fmtDay(start)}~${fmtDay(start + span - 1)})`);
+  }
+
+  // ---------- buyer + urgency legend filters (combined) ----------
+  function applyLegendFilters(){
+    const activeBuyers = [...document.querySelectorAll('#buyerLegend .chip.active')].map(c => c.dataset.buyer);
+    const activeRisks = [...document.querySelectorAll('#riskLegend .chip.active')].map(c => c.dataset.risk);
+    document.querySelectorAll('.blk').forEach(blk => {
+      const buyerOk = activeBuyers.length === 0 || activeBuyers.some(b => blk.classList.contains('b-' + b));
+      const riskOk = activeRisks.length === 0 || activeRisks.some(r => blk.classList.contains('risk-' + r));
+      blk.classList.toggle('dimmed', !(buyerOk && riskOk));
+    });
+  }
+  ['buyerLegend', 'riskLegend'].forEach(id => {
+    document.getElementById(id).addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if(!chip) return;
+      chip.classList.toggle('active');
+      applyLegendFilters();
+    });
+  });
+
+  // ---------- production tracking state (keyed by block uid, not the editable PO text) ----------
+  // Model: `dailyLog` maps day-of-month -> actual EA produced that day. Days strictly
+  // before TODAY are pre-seeded along the ramp-up curve (a clean "on plan" baseline,
+  // editable); TODAY and beyond are left blank until entered, so the first real entry
+  // is what actually moves the average and pushes the projected completion date.
+  // `steadyRate` is the full-speed target once the line is ramped up; each day's actual
+  // target is steadyRate * rampFraction(workday index since start).
+  const productionState = {};
+  function targetForDay(p, day){
+    const dayIndex = workdaysBetween(p.start, day) - 1;
+    const fraction = p.noRamp ? 1 : rampFraction(dayIndex);
+    return Math.max(1, Math.round(p.steadyRate * fraction));
+  }
+  function getProd(el){
+    const uid = el.dataset.uid;
+    if(productionState[uid]) return productionState[uid];
+    const start = parseInt(el.dataset.start, 10);
+    const span = parseInt(el.dataset.span, 10);
+    const plannedEnd = start + span - 1;
+    const workdaysTotal = Math.max(1, workdaysBetween(start, plannedEnd));
+    const total = parseInt(el.dataset.qty, 10);
+    const noRamp = el.dataset.noRamp === 'true';
+    let rampSum = 0;
+    for(let i = 0; i < workdaysTotal; i++) rampSum += noRamp ? 1 : rampFraction(i);
+    const steadyRate = Math.max(1, Math.round(total / rampSum));
+    const p = { total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, dailyLog: {} };
+    for(let d = start; d <= Math.min(TODAY - 1, plannedEnd); d++){
+      if(!isSunday(d)) p.dailyLog[d] = targetForDay(p, d);
+    }
+    productionState[uid] = p;
+    return p;
+  }
+
+  function prodDayRange(p){
+    const days = [];
+    for(let d = p.start; d <= Math.max(p.plannedEnd, TODAY); d++) if(!isSunday(d)) days.push(d);
+    return days;
+  }
+
+  function projectCompletion(p){
+    const entries = Object.values(p.dailyLog);
+    const cumulativeActual = entries.reduce((a, b) => a + b, 0);
+    const daysReported = entries.length;
+    const remaining = Math.max(0, p.total - cumulativeActual);
+    const avgActual = daysReported > 0 ? cumulativeActual / daysReported : p.steadyRate;
+    const progressPct = p.total ? Math.min(100, Math.round((cumulativeActual / p.total) * 100)) : 0;
+    const daysStillNeeded = remaining > 0 ? Math.ceil(remaining / avgActual) : 0;
+    const projectedEnd = addWorkdays(p.start - 1, daysReported + daysStillNeeded);
+    const delta = projectedEnd - p.plannedEnd;
+    return { cumulativeActual, daysReported, remaining, progressPct, projectedEnd, delta };
+  }
+
+  function renderDailyChartSVG(p){
+    const days = prodDayRange(p);
+    const targets = days.map(d => targetForDay(p, d));
+    const maxVal = Math.max(...targets.map(t => t * 1.15), ...days.map(d => p.dailyLog[d] || 0), 1);
+    const barW = 16, gap = 8, h = 84;
+    const w = days.length * (barW + gap) + gap;
+    const targetPts = days.map((d, i) => {
+      const x = gap + i * (barW + gap) + barW / 2;
+      return `${x},${h - (targets[i] / maxVal) * h}`;
+    }).join(' ');
+    const bars = days.map((d, i) => {
+      const x = gap + i * (barW + gap);
+      const v = p.dailyLog[d];
+      const target = targets[i];
+      if(v === undefined) return `<rect x="${x}" y="${h - 3}" width="${barW}" height="3" rx="1.5" fill="var(--line)" />`;
+      const bh = Math.max(2, (v / maxVal) * h);
+      const color = v >= target ? 'var(--ok)' : (v >= target * 0.6 ? 'var(--warn)' : 'var(--crit)');
+      return `<rect x="${x}" y="${h - bh}" width="${barW}" height="${bh}" rx="2" fill="${color}" />`;
+    }).join('');
+    return `
+      <svg width="${w}" height="${h + 4}" viewBox="0 0 ${w} ${h + 4}">
+        <polyline points="${targetPts}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round" />
+        ${bars}
+      </svg>`;
+  }
+
+  function refreshProdSummary(p, el){
+    const { cumulativeActual, remaining, progressPct, projectedEnd, delta } = projectCompletion(p);
+    const deltaClass = delta <= 0 ? 'ok' : (delta <= 2 ? 'warn' : 'crit');
+    const deltaLabel = delta <= 0 ? (remaining <= 0 ? '완료' : '정상 진행') : `+${delta}일 지연`;
+    document.getElementById('prodSummary').innerHTML = `
+      <div class="plan-line">계획 총 <b>${p.total.toLocaleString()}EA</b> · 정상가동 목표 <b>${p.steadyRate.toLocaleString()}EA/일</b> (초기 저속가동 반영) · 계획완료 ${fmtDay(p.plannedEnd)} (시작 ${fmtDay(p.start)})</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${progressPct}%"></div></div>
+      <div class="prog-label"><span>누적실적 ${cumulativeActual.toLocaleString()}EA (${progressPct}%)</span><span>잔여 ${remaining.toLocaleString()}EA</span></div>
+      <div class="eta">
+        <span>실적 기준 예상완료일 <span class="val">${fmtDay(projectedEnd)}</span></span>
+        <span class="delta ${deltaClass}">${deltaLabel}</span>
+      </div>
+    `;
+    document.getElementById('prodChartWrap').innerHTML = renderDailyChartSVG(p);
+    const haltBtn = document.getElementById('prodHalt');
+    if(haltBtn) haltBtn.textContent = `생산 중단 · 잔여 ${remaining.toLocaleString()}EA 미배정 큐로 이동`;
+    const newRisk = deltaClass;
+    el.classList.remove('risk-ok', 'risk-warn', 'risk-crit');
+    el.classList.add('risk-' + newRisk);
+    el.dataset.risk = newRisk;
+    const riskSelect = document.getElementById('d-risk');
+    if(riskSelect) riskSelect.value = newRisk;
+  }
+
+  function renderProdBox(el){
+    const p = getProd(el);
+    const days = prodDayRange(p);
+    const box = document.getElementById('prodBox');
+    box.innerHTML = `
+      <div id="prodSummary"></div>
+      <div class="prod-chart-wrap" id="prodChartWrap"></div>
+      <div class="daily-table-wrap">
+        <table class="daily-table">
+          <thead><tr><th>일자</th><th>목표</th><th>실적 (EA)</th></tr></thead>
+          <tbody id="dailyTableBody">
+            ${days.map(d => `
+              <tr class="${d >= TODAY ? 'future' : ''}">
+                <td>${fmtDay(d)} (${dow[(firstDow + d - 1) % 7]})</td>
+                <td class="qty">${targetForDay(p, d).toLocaleString()}</td>
+                <td><input type="number" min="0" class="daily-input" data-day="${d}" value="${p.dailyLog[d] ?? ''}" placeholder="-" /></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button class="halt-btn" id="prodHalt">생산 중단</button>
+    `;
+    box.querySelectorAll('.daily-input').forEach(input => {
+      input.addEventListener('input', () => {
+        const day = parseInt(input.dataset.day, 10);
+        const v = input.value === '' ? null : Math.max(0, parseInt(input.value, 10) || 0);
+        if(v === null) delete p.dailyLog[day]; else p.dailyLog[day] = v;
+        refreshProdSummary(p, el);
+      });
+      input.addEventListener('change', () => checkShipRisk());
+    });
+    document.getElementById('prodHalt').addEventListener('click', () => haltProduction(el));
+    refreshProdSummary(p, el);
+  }
+
+  // ---------- detail slide-over: full manual edit form ----------
+  const overlay = document.getElementById('overlay');
+  const detail = document.getElementById('detail');
+  let currentEl = null;
+  const lineSelect = document.getElementById('d-line');
+  Object.keys(lineAreaByName).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    lineSelect.appendChild(opt);
+  });
+
+  function openDetail(el){
+    currentEl = el;
+    document.getElementById('d-po').value = el.dataset.po;
+    document.getElementById('d-buyer').value = el.dataset.buyer;
+    document.getElementById('d-qty').value = el.dataset.qty;
+    document.getElementById('d-item').value = el.dataset.item;
+    document.getElementById('d-line').value = el.dataset.line;
+    document.getElementById('d-risk').value = el.dataset.risk;
+    document.getElementById('d-start').value = el.dataset.start;
+    document.getElementById('d-span').value = el.dataset.span;
+    document.getElementById('d-ship').value = el.dataset.ship;
+    document.getElementById('d-status').value = el.dataset.status;
+    renderProdBox(el);
+    overlay.classList.add('open');
+    detail.classList.add('open');
+  }
+  function closeDetail(){ overlay.classList.remove('open'); detail.classList.remove('open'); currentEl = null; }
+  overlay.addEventListener('click', closeDetail);
+  document.getElementById('detailClose').addEventListener('click', closeDetail);
+  document.getElementById('detailCancel').addEventListener('click', closeDetail);
+
+  document.getElementById('detailSave').addEventListener('click', () => {
+    if(!currentEl) return;
+    pushUndo();
+    const el = currentEl;
+    const prevArea = el.parentElement;
+    const newBuyer = document.getElementById('d-buyer').value.trim() || el.dataset.buyer;
+    el.dataset.po = document.getElementById('d-po').value.trim() || el.dataset.po;
+    el.dataset.buyer = newBuyer;
+    el.dataset.buyerClass = buyerClassFor(newBuyer);
+    el.dataset.item = document.getElementById('d-item').value.trim() || el.dataset.item;
+    el.dataset.qty = Math.max(1, parseInt(document.getElementById('d-qty').value, 10) || 1);
+    el.dataset.risk = document.getElementById('d-risk').value;
+    el.dataset.ship = document.getElementById('d-ship').value || el.dataset.ship;
+    el.dataset.status = document.getElementById('d-status').value.trim();
+
+    let start = Math.max(1, Math.min(31, parseInt(document.getElementById('d-start').value, 10) || 1));
+    let span = Math.max(1, parseInt(document.getElementById('d-span').value, 10) || 1);
+    span = Math.min(span, 32 - start);
+    el.dataset.start = start;
+    el.dataset.span = span;
+    positionBlock(el, start, span);
+
+    el.className = `blk ${el.dataset.buyerClass} risk-${el.dataset.risk}`;
+    renderBlockContent(el);
+
+    const newLineName = document.getElementById('d-line').value;
+    if(newLineName && newLineName !== el.dataset.line){
+      el.dataset.line = newLineName;
+      const targetArea = lineAreaByName[newLineName];
+      if(targetArea) targetArea.appendChild(el);
+    }
+    refreshOverlapsForArea(prevArea);
+    refreshOverlapsForArea(el.parentElement);
+
+    delete productionState[el.dataset.uid];
+    renderProdBox(el);
+    showToast(`${el.dataset.po} 저장 완료`);
+    checkShipRisk();
+  });
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- unassigned queue ----------
+  // Every item carries qtyNum + dailyRate -- the span used when it lands on the board
+  // is always derived from these (Math.ceil(qtyNum/dailyRate)), never a fixed number.
+  const queueData = [
+    { id:'33210', badge:'crit', dday:'D-3', po:'#33210', buyer:'VANGUARD', item:'TRAIL PANTS WOMEN', qtyNum:4200, dailyRate:210, due:'2026-07-19', rec:'LINE 10', caution:'숙련도 낮음 · 학습곡선 주의' },
+    { id:'33602', badge:'warn', dday:'D-6', po:'#33602', buyer:'STRAUSS', item:'ZIP OFF PANTS 9차', qtyNum:6700, dailyRate:380, due:'2026-07-22', rec:'LINE 6', caution:'' },
+    { id:'33710', badge:'warn', dday:'D-16', po:'#33710', buyer:'MTRL', item:'MOTION SUSPENDERS', qtyNum:2300, dailyRate:300, due:'2026-08-01', rec:'LINE 8', caution:'' },
+    { id:'33344', badge:'ok', dday:'D-20', po:'#33344', buyer:'AMBITIONS', item:'SHORT MEN CHAMPION', qtyNum:1800, dailyRate:350, due:'2026-08-05', rec:'LINE 7', caution:'' },
+    { id:'33501', badge:'ok', dday:'D-27', po:'#33501', buyer:'ENTIRE', item:'YUKON JACKET (2차)', qtyNum:9500, dailyRate:380, due:'2026-08-12', rec:'LINE 3', caution:'' },
+  ];
+  function daysFor(q){ return q.dailyRate ? daysForRamped(q.qtyNum, q.dailyRate) : null; }
+  const queueBody = document.getElementById('queueBody');
+  function renderQueue(){
+    queueBody.innerHTML = '';
+    queueData.forEach(q => {
+      const tr = document.createElement('tr');
+      tr.id = 'q-' + q.id;
+      const rateCell = q.dailyRate
+        ? `${q.dailyRate.toLocaleString()} EA/일 (${daysFor(q)}일)`
+        : `<div class="rate-fill-cell">
+             <input type="number" min="1" class="rate-fill-input" data-id="${q.id}" placeholder="일일생산량" />
+             <span class="rate-fill-label">⚠ 미입력</span>
+           </div>`;
+      const assignBtn = q.dailyRate
+        ? `<button class="assign-btn" data-id="${q.id}">배정</button>`
+        : `<button class="assign-btn" data-id="${q.id}" disabled title="일일생산량을 먼저 입력하세요">배정</button>`;
+      tr.innerHTML = `
+        <td><span class="badge ${q.badge}">${q.dday}</span></td>
+        <td style="font-family:var(--mono)">${q.po}</td>
+        <td>${q.buyer}</td>
+        <td>${q.item}</td>
+        <td class="qty">${q.qtyNum.toLocaleString()} EA</td>
+        <td class="qty">${rateCell}</td>
+        <td class="qty">${q.due}</td>
+        <td class="rec"><b>${q.rec}</b>${q.caution ? `<span class="caution">${q.caution}</span>` : ''}</td>
+        <td>${assignBtn}</td>
+      `;
+      queueBody.appendChild(tr);
+    });
+    document.getElementById('queueCount').textContent = `(${queueData.length})`;
+  }
+  renderQueue();
+
+  // fill in a missing daily production rate directly from the queue row
+  queueBody.addEventListener('change', (e) => {
+    const input = e.target.closest('.rate-fill-input');
+    if(!input) return;
+    const v = parseInt(input.value, 10);
+    if(!v || v <= 0) return;
+    const q = queueData.find(x => x.id === input.dataset.id);
+    if(!q) return;
+    q.dailyRate = v;
+    q.caution = '';
+    renderQueue();
+    showToast(`${q.po} 일일생산량 ${v.toLocaleString()}EA/일 반영 · 배정 가능`);
+  });
+
+  // ---------- excel/csv import ----------
+  // CSV: plain split, no quoted-comma support (good enough for a flat order export).
+  function parseCSV(text){
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if(lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    return lines.slice(1).map(line => {
+      const cells = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      const row = {};
+      headers.forEach((h, i) => { row[h] = cells[i] ?? ''; });
+      return row;
+    });
+  }
+
+  // XLSX best-effort reader: unzips with the browser's built-in DecompressionStream
+  // (no external library available in this sandboxed page) and reads the first sheet.
+  // Handles the common case -- a plain flat export, single sheet, standard local
+  // file headers. Complex workbooks (merged cells, multiple sheets, streamed zips)
+  // may fail; CSV is the reliable fallback.
+  async function readZipEntries(buf){
+    const dv = new DataView(buf);
+    const bytes = new Uint8Array(buf);
+    const decoder = new TextDecoder();
+    const entries = {};
+    let offset = 0;
+    while(offset + 30 <= bytes.length && dv.getUint32(offset, true) === 0x04034b50){
+      const compMethod = dv.getUint16(offset + 8, true);
+      const compSize = dv.getUint32(offset + 18, true);
+      const nameLen = dv.getUint16(offset + 26, true);
+      const extraLen = dv.getUint16(offset + 28, true);
+      const nameStart = offset + 30;
+      const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLen));
+      const dataStart = nameStart + nameLen + extraLen;
+      const raw = bytes.subarray(dataStart, dataStart + compSize);
+      if(compMethod === 0){
+        entries[name] = raw;
+      } else if(compMethod === 8){
+        const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        entries[name] = new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+      offset = dataStart + compSize;
+    }
+    return entries;
+  }
+  function parseSharedStrings(xml){
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    return [...doc.getElementsByTagName('si')].map(si => si.textContent);
+  }
+  function parseSheetRows(xml, sharedStrings){
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    const grid = [...doc.getElementsByTagName('row')].map(rowEl => {
+      const rowObj = {};
+      [...rowEl.getElementsByTagName('c')].forEach(c => {
+        const col = (c.getAttribute('r') || '').replace(/[0-9]/g, '');
+        const type = c.getAttribute('t');
+        let value = '';
+        if(type === 'inlineStr'){
+          const isEl = c.getElementsByTagName('is')[0];
+          value = isEl ? isEl.textContent : '';
+        } else {
+          const vEl = c.getElementsByTagName('v')[0];
+          const raw = vEl ? vEl.textContent : '';
+          value = type === 's' ? (sharedStrings[parseInt(raw, 10)] || '') : raw;
+        }
+        rowObj[col] = value;
+      });
+      return rowObj;
+    });
+    if(grid.length === 0) return [];
+    const headerRow = grid[0];
+    return grid.slice(1).map(rowObj => {
+      const out = {};
+      Object.keys(rowObj).forEach(col => {
+        const h = headerRow[col];
+        if(h) out[h] = rowObj[col];
+      });
+      return out;
+    }).filter(r => Object.values(r).some(v => String(v).trim() !== ''));
+  }
+  async function parseXLSX(file){
+    const entries = await readZipEntries(await file.arrayBuffer());
+    const decoder = new TextDecoder();
+    const sharedStrings = entries['xl/sharedStrings.xml'] ? parseSharedStrings(decoder.decode(entries['xl/sharedStrings.xml'])) : [];
+    const sheetPath = Object.keys(entries).find(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n));
+    if(!sheetPath) throw new Error('시트를 찾을 수 없음');
+    return parseSheetRows(decoder.decode(entries[sheetPath]), sharedStrings);
+  }
+
+  // Excel date serial (days since 1899-12-30, matching Excel's 1900 leap-year quirk) -> ISO
+  function excelSerialToISO(serial){
+    const ms = Date.UTC(1899, 11, 30) + serial * 86400000;
+    const d = new Date(ms);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
+  function normalizeDate(raw){
+    if(!raw) return null;
+    const s = String(raw).trim();
+    if(/^\d+(\.\d+)?$/.test(s) && Number(s) > 20000) return excelSerialToISO(Number(s));
+    const m1 = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+    if(m1) return `${m1[1]}-${m1[2].padStart(2, '0')}-${m1[3].padStart(2, '0')}`;
+    const m2 = s.match(/^(\d{1,2})[-/](\d{1,2})$/);
+    if(m2) return `2026-${m2[1].padStart(2, '0')}-${m2[2].padStart(2, '0')}`;
+    return null;
+  }
+
+  const FIELD_ALIASES = {
+    po: ['오더번호', 'po', '주문번호', '오더', '발주번호'],
+    buyer: ['바이어', 'buyer', '거래처'],
+    item: ['품목', 'item', '품명', '스타일'],
+    qty: ['수량', 'qty', '주문수량', '총수량', '총주문수량'],
+    due: ['납기일', '납기', 'due', 'duedate', '출고일', '출고예정일'],
+    rate: ['일일생산량', '일일예상생산량', '생산량', '목표생산량', 'dailyrate'],
+  };
+  function findField(row, aliases){
+    const key = Object.keys(row).find(k => aliases.includes(k.replace(/\s/g, '').toLowerCase()));
+    return key ? row[key] : undefined;
+  }
+
+  function importRowsToQueue(rows, filename){
+    let added = 0, missingRate = 0;
+    rows.forEach((row, i) => {
+      const buyer = (findField(row, FIELD_ALIASES.buyer) || '').toString().trim();
+      const item = (findField(row, FIELD_ALIASES.item) || '').toString().trim();
+      const qty = parseInt(String(findField(row, FIELD_ALIASES.qty) || '').replace(/[^0-9]/g, ''), 10);
+      if(!buyer || !item || !qty) return; // skip rows missing the fields we can't reasonably default
+      const po = (findField(row, FIELD_ALIASES.po) || `#IMP${Date.now().toString().slice(-5)}${i}`).toString().trim();
+      const due = normalizeDate(findField(row, FIELD_ALIASES.due)) || '2026-08-15';
+      const rateRaw = findField(row, FIELD_ALIASES.rate);
+      const rate = rateRaw ? parseInt(String(rateRaw).replace(/[^0-9]/g, ''), 10) : null;
+      if(!rate) missingRate++;
+      const dueDay = parseInt(due.slice(8, 10), 10);
+      const dday = dueDay - TODAY;
+      const badge = dday <= 7 ? 'crit' : (dday <= 14 ? 'warn' : 'ok');
+      queueData.push({
+        id: po.replace('#', '') + '-i' + i,
+        badge, dday: `D-${dday}`, po, buyer, item,
+        qtyNum: qty, dailyRate: rate || null, due, rec: 'LINE 10',
+        caution: rate ? '' : '⚠ 일일생산량 미입력 · 배정 전 입력 필요',
+      });
+      added++;
+    });
+    renderQueue();
+    showToast(`${filename}에서 ${added}건 가져옴${missingRate > 0 ? ` · ${missingRate}건 일일생산량 입력 필요` : ''}`);
+  }
+
+  document.getElementById('importFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const rows = file.name.toLowerCase().endsWith('.csv') ? parseCSV(await file.text()) : await parseXLSX(file);
+      if(rows.length === 0){ showToast('읽을 수 있는 데이터 행이 없습니다'); }
+      else importRowsToQueue(rows, file.name);
+    } catch(err){
+      showToast(`파일을 읽지 못했습니다 · CSV로 내보내서 다시 시도해보세요 (${(err && err.message) || err})`);
+    }
+    e.target.value = '';
+  });
+
+  // ---------- shared placement: always derives span from qtyNum / dailyRate ----------
+  function placeOrderOnBoard(item, statusText, startDay){
+    // item.rec is a short name ("LINE 10"); lineAreaByName keys are full labels ("LINE 10 · 10조")
+    const targetLineName = Object.keys(lineAreaByName).find(n => n.startsWith(item.rec + ' ·')) || 'LINE 10 · 10조';
+    const area = lineAreaByName[targetLineName];
+    if(!area) return null;
+    const start = startDay || TODAY;
+    const span = Math.min(31 - start + 1, daysFor(item));
+    const block = createBlock({
+      start, span, buyerClass: buyerClassFor(item.buyer), buyer: item.buyer,
+      item: item.item, po: item.po, qty: item.qtyNum, ship: item.due, risk: item.badge,
+      status: statusText, noRamp: !!item.resumed,
+    }, targetLineName);
+    const idleEl = area.querySelector('.idle-slot');
+    if(idleEl) idleEl.remove();
+    area.appendChild(block);
+    refreshOverlapsForArea(area);
+    const end = start + span - 1;
+    const dueDay = parseInt(item.due.slice(8, 10), 10);
+    const buffer = dueDay - end;
+    return { span, targetLineName, end, buffer, start };
+  }
+
+  // ---------- halt production: keep the days that already have real output on the
+  // board (truncated, not erased), send only the unproduced remainder back to the
+  // queue. When that remainder is later reassigned, production resumes at full speed
+  // right away (no re-ramp) since the line was already up to speed.
+  function haltProduction(el){
+    const p = getProd(el);
+    const { cumulativeActual, remaining } = projectCompletion(p);
+    if(remaining <= 0){
+      showToast('이미 완료된 오더는 중단할 수 없습니다');
+      return;
+    }
+    pushUndo();
+    const dueDay = parseInt(el.dataset.ship.slice(8, 10), 10);
+    const dday = dueDay - TODAY;
+    const badge = dday <= 7 ? 'crit' : (dday <= 14 ? 'warn' : 'ok');
+    queueData.unshift({
+      id: el.dataset.po.replace('#', '') + '-r' + String(Date.now()).slice(-4),
+      badge, dday: `D-${dday}`, po: el.dataset.po, buyer: el.dataset.buyer, item: el.dataset.item,
+      qtyNum: remaining, dailyRate: p.steadyRate, due: el.dataset.ship,
+      rec: el.dataset.line.split(' · ')[0],
+      resumed: true,
+      caution: `생산 재개 대기 · 기존 실적 ${cumulativeActual.toLocaleString()}EA 반영됨 (이어서 배정 필요)`,
+    });
+    renderQueue();
+
+    const area = el.parentElement;
+    const loggedDays = Object.keys(p.dailyLog).map(Number);
+    const lastLogged = loggedDays.length ? Math.max(...loggedDays) : p.start - 1;
+    if(lastLogged >= p.start){
+      // truncate to exactly the logged span -- keep the real dailyLog entries intact
+      // (mutate in place, don't delete/reseed, so nothing already entered is lost)
+      const newSpan = lastLogged - p.start + 1;
+      positionBlock(el, p.start, newSpan);
+      el.dataset.span = newSpan;
+      el.dataset.qty = cumulativeActual;
+      el.dataset.status = '생산 중단 · 잔여는 미배정 큐로 이동';
+      el.dataset.risk = 'crit';
+      el.className = `blk ${el.dataset.buyerClass} risk-crit halted`;
+      renderBlockContent(el);
+      p.plannedEnd = lastLogged;
+      p.workdaysTotal = workdaysBetween(p.start, lastLogged);
+      p.total = cumulativeActual;
+    } else {
+      // nothing was ever actually produced -- nothing to keep on the board
+      delete productionState[el.dataset.uid];
+      el.remove();
+    }
+    refreshOverlapsForArea(area);
+    closeDetail();
+    showToast(`${el.dataset.po} 생산 중단 · 실적 ${cumulativeActual.toLocaleString()}EA는 보드에 남기고 잔여 ${remaining.toLocaleString()}EA는 미배정 큐로 이동`);
+  }
+
+  // ---------- undo (Ctrl+Z / button): full snapshot of board + queue + production state ----------
+  const undoStack = [];
+  function snapshotState(){
+    const blocks = [...document.querySelectorAll('.blk')].map(b => ({
+      uid: b.dataset.uid, line: b.dataset.line, po: b.dataset.po, buyer: b.dataset.buyer,
+      buyerClass: b.dataset.buyerClass, item: b.dataset.item, qty: b.dataset.qty, ship: b.dataset.ship,
+      status: b.dataset.status, risk: b.dataset.risk, start: b.dataset.start, span: b.dataset.span,
+    }));
+    const idleLines = Object.keys(lineAreaByName).filter(name => lineAreaByName[name].querySelector('.idle-slot'));
+    return {
+      blocks, idleLines,
+      queueData: JSON.parse(JSON.stringify(queueData)),
+      productionState: JSON.parse(JSON.stringify(productionState)),
+    };
+  }
+  function pushUndo(){
+    undoStack.push(snapshotState());
+    if(undoStack.length > 20) undoStack.shift();
+  }
+  function restoreState(snap){
+    document.querySelectorAll('.blk').forEach(b => b.remove());
+    document.querySelectorAll('.idle-slot').forEach(s => s.remove());
+    snap.blocks.forEach(o => {
+      const area = lineAreaByName[o.line];
+      if(!area) return;
+      const block = createBlock({
+        start: parseInt(o.start, 10), span: parseInt(o.span, 10), buyerClass: o.buyerClass, buyer: o.buyer,
+        item: o.item, po: o.po, qty: parseInt(o.qty, 10), ship: o.ship, risk: o.risk, status: o.status,
+      }, o.line, o.uid);
+      area.appendChild(block);
+    });
+    snap.idleLines.forEach(name => {
+      const area = lineAreaByName[name];
+      if(!area || area.querySelector('.idle-slot')) return;
+      const def = lineDefs.find(l => `${l.name} · ${l.team.split(' · ')[0]}` === name);
+      if(def && def.idleSlot) area.appendChild(createIdleSlot(def.idleSlot.start, def.idleSlot.span, true, 'line10-slot'));
+    });
+    Object.values(lineAreaByName).forEach(refreshOverlapsForArea);
+    queueData.length = 0;
+    snap.queueData.forEach(q => queueData.push(q));
+    renderQueue();
+    Object.keys(productionState).forEach(k => delete productionState[k]);
+    Object.assign(productionState, snap.productionState);
+    closeDetail();
+  }
+  function undo(){
+    if(undoStack.length === 0){ showToast('되돌릴 작업이 없습니다'); return; }
+    restoreState(undoStack.pop());
+    showToast('실행 취소 완료');
+  }
+  document.getElementById('undoBtn').addEventListener('click', undo);
+  document.addEventListener('keydown', (e) => {
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){
+      e.preventDefault();
+      undo();
+    }
+  });
+
+  // ---------- new-order registration: qty + daily rate -> auto day/date calc ----------
+  function updateRegEstimate(){
+    const qty = parseInt(document.getElementById('reg-qty').value, 10);
+    const rate = parseInt(document.getElementById('reg-rate').value, 10);
+    const due = document.getElementById('reg-due').value;
+    const box = document.getElementById('regEstimate');
+    if(!qty || !rate || qty <= 0 || rate <= 0){
+      box.innerHTML = `<span>소요일수 산정 대기</span><span class="sub">수량 · 생산량을 입력하세요</span>`;
+      return null;
+    }
+    const days = daysForRamped(qty, rate);
+    const start = TODAY;
+    const end = addWorkdays(start, days - 1);
+    let bufferHtml = '';
+    if(due){
+      const dueDay = parseInt(due.slice(8, 10), 10);
+      const buffer = dueDay - end;
+      bufferHtml = buffer < safetyBufferDays
+        ? `<span class="sub buffer-warn">⚠ 납기까지 여유 ${buffer}일 (최소 ${safetyBufferDays}일 권장)</span>`
+        : `<span class="sub">납기까지 여유 ${buffer}일</span>`;
+    }
+    box.innerHTML = `<span><b>${days}일</b> 소요 (초기 저속가동 반영 · 일요일 제외)</span><span class="sub">${fmtDay(start)} 시작 → 예상완료 ${fmtDay(end)}</span>${bufferHtml}`;
+    return { days, start, end };
+  }
+  document.getElementById('reg-qty').addEventListener('input', updateRegEstimate);
+  document.getElementById('reg-rate').addEventListener('input', updateRegEstimate);
+  document.getElementById('reg-due').addEventListener('input', updateRegEstimate);
+
+  document.getElementById('regSubmit').addEventListener('click', () => {
+    const po = document.getElementById('reg-po').value.trim();
+    const buyer = document.getElementById('reg-buyer').value.trim();
+    const item = document.getElementById('reg-item').value.trim();
+    const qty = parseInt(document.getElementById('reg-qty').value, 10);
+    const rate = parseInt(document.getElementById('reg-rate').value, 10);
+    const due = document.getElementById('reg-due').value;
+    if(!po || !buyer || !item || !qty || !rate || !due){
+      showToast('오더번호 · 바이어 · 품목 · 수량 · 생산량 · 납기일을 모두 입력하세요');
+      return;
+    }
+    const est = updateRegEstimate();
+    if(!est) return;
+    const dueDay = parseInt(due.slice(8, 10), 10);
+    const dday = dueDay - TODAY;
+    const badge = dday <= 7 ? 'crit' : (dday <= 14 ? 'warn' : 'ok');
+    const itemUpper = item.toUpperCase();
+    const recLine = teamData.find(t => !t.idle && t.skills.some(s => itemUpper.includes(s.split(' ')[0])));
+    queueData.unshift({
+      id: po.replace('#', '') || Date.now().toString(),
+      badge, dday: `D-${dday}`, po, buyer, item,
+      qtyNum: qty, dailyRate: rate, due, rec: recLine ? recLine.line : 'LINE 10',
+      caution: recLine ? '' : `자동 매칭 실패 · 소요 ${est.days}일(${fmtDay(est.start)}→${fmtDay(est.end)}) · 유휴 라인 검토`,
+    });
+    renderQueue();
+    showToast(`${po} 등록 완료 · 소요 ${est.days}일 · 예상완료 ${fmtDay(est.end)}`);
+    ['reg-po','reg-buyer','reg-item','reg-qty','reg-rate'].forEach(id => document.getElementById(id).value = '');
+    updateRegEstimate();
+  });
+
+  function bufferSuffix(placed){
+    if(!placed) return '';
+    return placed.buffer < safetyBufferDays
+      ? ` · ⚠ 납기 여유 ${placed.buffer}일 (최소 ${safetyBufferDays}일 권장 미달)`
+      : ` · 납기 여유 ${placed.buffer}일`;
+  }
+
+  function removeFromQueue(id){
+    const idx = queueData.findIndex(q => q.id === id);
+    if(idx === -1) return null;
+    const [item] = queueData.splice(idx, 1);
+    const tr = document.getElementById('q-' + id);
+    if(tr){ tr.classList.add('removing'); setTimeout(() => renderQueue(), 260); }
+    return item;
+  }
+  queueBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('.assign-btn');
+    if(!btn || btn.disabled) return;
+    openLineSelect(btn.dataset.id);
+  });
+
+  // ---------- recommendation score shared by both assignment modals ----------
+  // lower is better: skill-matched lines rank first, ties broken by higher recent
+  // productivity (avg EA/day)
+  function matchScore(lineShort, item){
+    const team = teamData.find(t => t.line === lineShort);
+    if(!team) return 9999;
+    const itemUpper = (item.item || '').toUpperCase();
+    const skillMatch = team.skills.some(s => itemUpper.includes(s.split(' ')[0]));
+    return (skillMatch ? 0 : 1000) - team.avg;
+  }
+
+  // ---------- queue tab: pick which line to assign a given order to ----------
+  const lineSelectOverlay = document.getElementById('lineSelectOverlay');
+  const lineSelectModalEl = document.getElementById('lineSelectModal');
+  function closeLineSelect(){
+    lineSelectOverlay.classList.remove('open');
+    lineSelectModalEl.classList.remove('open');
+  }
+  lineSelectOverlay.addEventListener('click', closeLineSelect);
+  document.getElementById('lineSelectClose').addEventListener('click', closeLineSelect);
+
+  function openLineSelect(queueId){
+    const item = queueData.find(q => q.id === queueId);
+    if(!item) return;
+    document.getElementById('lineSelectTitle').textContent = `${item.po} · ${item.item} — 배정 라인 선택`;
+    const ranked = teamData.map(t => ({ t, score: matchScore(t.line, item) })).sort((a, b) => a.score - b.score);
+    document.getElementById('lineSelectBody').innerHTML = ranked.map(({ t }, i) => `
+      <div class="line-pick-item">
+        <div class="lp-info">
+          <div class="lp-name">${t.line}${i === 0 ? '<span class="lp-rec">★ 추천</span>' : ''}</div>
+          <div class="lp-meta">${t.team} · 숙련: ${t.skills.join(', ')} · 평균 ${t.avg.toLocaleString()}EA/일${t.idle ? ' · 유휴' : ''}</div>
+        </div>
+        <button class="line-pick-btn" data-line="${t.line}" data-qid="${queueId}">배정</button>
+      </div>
+    `).join('');
+    lineSelectOverlay.classList.add('open');
+    lineSelectModalEl.classList.add('open');
+  }
+  document.getElementById('lineSelectBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.line-pick-btn');
+    if(!btn) return;
+    const lineShort = btn.dataset.line;
+    closeLineSelect();
+    pushUndo();
+    const item = removeFromQueue(btn.dataset.qid);
+    if(!item) return;
+    const placed = placeOrderOnBoard({ ...item, rec: lineShort }, item.resumed ? '재배정 · 이어서 생산' : '수동 배정');
+    if(placed) showToast(`${item.po} → ${placed.targetLineName} · ${placed.span}일 배정${bufferSuffix(placed)}`);
+    else showToast(`${item.po} 배정 실패 · 대상 라인을 찾을 수 없습니다`);
+  });
+
+  // ---------- schedule board: click empty space on a line/day to pick an order ----------
+  const quickAssignOverlay = document.getElementById('quickAssignOverlay');
+  const quickAssignModalEl = document.getElementById('quickAssignModal');
+  function closeQuickAssign(){
+    quickAssignOverlay.classList.remove('open');
+    quickAssignModalEl.classList.remove('open');
+  }
+  quickAssignOverlay.addEventListener('click', closeQuickAssign);
+  document.getElementById('quickAssignClose').addEventListener('click', closeQuickAssign);
+
+  function openQuickAssign(lineLabel, day){
+    const lineShort = lineLabel.split(' · ')[0];
+    quickAssignModalEl.dataset.line = lineLabel;
+    quickAssignModalEl.dataset.day = day;
+    document.getElementById('quickAssignTitle').textContent = `${lineLabel} · 7/${day}부터 배정 — 미배정 오더 선택`;
+    const ranked = queueData.map(q => ({
+      q,
+      dday: parseInt(q.dday.replace('D', ''), 10),
+      score: matchScore(lineShort, q),
+    })).sort((a, b) => (a.dday - b.dday) || (a.score - b.score));
+    const body = document.getElementById('quickAssignBody');
+    if(ranked.length === 0){
+      body.innerHTML = `<div class="risk-empty">미배정 오더가 없습니다</div>`;
+    } else {
+      body.innerHTML = ranked.map(({ q, score }) => `
+        <div class="risk-item">
+          <div class="risk-info">
+            <div class="rp">${q.po} · ${q.item}${score <= 0 ? '<span class="lp-rec">★ 추천</span>' : ''}</div>
+            <div class="rd">${q.buyer} · ${q.qtyNum.toLocaleString()}EA${q.dailyRate ? ` · ${q.dailyRate.toLocaleString()}EA/일` : ' · ⚠ 일일생산량 미입력'}</div>
+          </div>
+          <span class="badge ${q.badge}">${q.dday}</span>
+          <button class="risk-extend-btn" data-qid="${q.id}" ${q.dailyRate ? '' : 'disabled title="일일생산량을 먼저 입력하세요"'}>배정</button>
+        </div>
+      `).join('');
+    }
+    quickAssignOverlay.classList.add('open');
+    quickAssignModalEl.classList.add('open');
+  }
+  document.getElementById('quickAssignBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.risk-extend-btn');
+    if(!btn || btn.disabled) return;
+    const lineLabel = quickAssignModalEl.dataset.line;
+    const day = parseInt(quickAssignModalEl.dataset.day, 10);
+    closeQuickAssign();
+    pushUndo();
+    const item = removeFromQueue(btn.dataset.qid);
+    if(!item) return;
+    const lineShort = lineLabel.split(' · ')[0];
+    const placed = placeOrderOnBoard({ ...item, rec: lineShort }, item.resumed ? '재배정 · 이어서 생산' : '수동 배정', day);
+    if(placed) showToast(`${item.po} → ${placed.targetLineName} · 7/${day} 시작 · ${placed.span}일 배정${bufferSuffix(placed)}`);
+    else showToast(`${item.po} 배정 실패 · 대상 라인을 찾을 수 없습니다`);
+  });
+
+  // ---------- auto-assign demo ----------
+  document.getElementById('autoAssignBtn').addEventListener('click', () => {
+    if(!queueData.find(q => q.id === '33210')){ showToast('배정 대기 중인 긴급 오더가 없습니다'); return; }
+    pushUndo();
+    const item = removeFromQueue('33210');
+    if(!item){ showToast('배정 대기 중인 긴급 오더가 없습니다'); return; }
+    const placed = placeOrderOnBoard(item, '자동배정 · 유휴 라인 투입');
+    if(placed) showToast(`긴급 오더 1건(${item.po})을 ${placed.targetLineName}에 자동배정 · ${placed.span}일${bufferSuffix(placed)}`);
+  });
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ---------- team cards ----------
+  const teamData = [
+    { line:'LINE 1', team:'1조', members:8, skills:['PANTS','ACTIVE PANTS'], avg:512, trend:[70,78,82,75,88] },
+    { line:'LINE 2', team:'2조', members:7, skills:['PANTS'], avg:470, trend:[60,64,58,66,62], idle:true },
+    { line:'LINE 3', team:'3조', members:9, skills:['SHIRT','JACKET'], avg:398, trend:[55,60,72,80,84] },
+    { line:'LINE 4', team:'4조', members:8, skills:['PANTS','MBDU'], avg:455, trend:[68,70,74,71,76] },
+    { line:'LINE 5', team:'5조', members:8, skills:['PANTS','ZIP-OFF'], avg:441, trend:[65,69,73,70,79] },
+    { line:'LINE 6', team:'6조', members:7, skills:['ZIP-OFF'], avg:409, trend:[62,66,60,71,74] },
+    { line:'LINE 7', team:'7조', members:8, skills:['SHORTS'], avg:388, trend:[58,62,66,69,72] },
+    { line:'LINE 8', team:'8조', members:6, skills:['SUSPENDER'], avg:362, trend:[50,55,53,60,64] },
+    { line:'LINE 9', team:'9조', members:7, skills:['SUSPENDER'], avg:377, trend:[54,58,61,63,68] },
+    { line:'LINE 10', team:'10조', members:8, skills:['PANTS (학습중)'], avg:301, trend:[40,44,48,46,52], idle:true },
+    { line:'LINE 11', team:'11조', members:8, skills:['PANTS','ACTIVE PANTS'], avg:499, trend:[71,75,79,77,85] },
+    { line:'LINE 12', team:'12조', members:7, skills:['COMBAT SHIRT'], avg:344, trend:[52,56,59,61,66] },
+  ];
+  const teamGrid = document.getElementById('teamGrid');
+  function sparkline(vals){
+    const w=100,h=28,max=100;
+    const pts = vals.map((v,i)=> `${(i/(vals.length-1))*w},${h - (v/max)*h}`).join(' ');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  teamData.forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'team-card' + (t.idle ? ' idle' : '');
+    card.innerHTML = `
+      <div class="head"><span class="line">${t.line}${t.idle ? ' · 유휴' : ''}</span><span class="members">${t.team} · ${t.members}명</span></div>
+      <div class="skills">${t.skills.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
+      <div class="stats">
+        <div class="avg"><div class="n">${t.avg}</div><div class="u">EA / 일 · 최근 4주 평균</div></div>
+        ${sparkline(t.trend)}
+      </div>
+    `;
+    teamGrid.appendChild(card);
+  });
+
+  // ---------- constraint settings modal ----------
+  let shipRiskThreshold = 7;
+  let safetyBufferDays = 5;
+  const constraintPrompts = []; // { line, text } -- free-text rules per manager/line, kept in memory
+  const modalOverlay = document.getElementById('modalOverlay');
+  const settingsModal = document.getElementById('settingsModal');
+
+  const promptLineSelect = document.getElementById('cfg-promptLine');
+  Object.keys(lineAreaByName).forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    promptLineSelect.appendChild(opt);
+  });
+
+  function renderPromptList(){
+    const box = document.getElementById('cfg-promptList');
+    if(constraintPrompts.length === 0){
+      box.innerHTML = `<div class="prompt-empty">아직 등록된 조건이 없습니다.</div>`;
+      return;
+    }
+    box.innerHTML = constraintPrompts.map((c, i) => `
+      <div class="prompt-item">
+        <div>
+          <div class="pline">${c.line}</div>
+          <div class="ptext">${c.text}</div>
+        </div>
+        <button class="prompt-remove" data-idx="${i}" aria-label="삭제">✕</button>
+      </div>
+    `).join('');
+  }
+  renderPromptList();
+
+  document.getElementById('cfg-promptList').addEventListener('click', (e) => {
+    const btn = e.target.closest('.prompt-remove');
+    if(!btn) return;
+    constraintPrompts.splice(parseInt(btn.dataset.idx, 10), 1);
+    renderPromptList();
+  });
+  document.getElementById('cfg-promptAdd').addEventListener('click', () => {
+    const line = promptLineSelect.value;
+    const textEl = document.getElementById('cfg-promptText');
+    const text = textEl.value.trim();
+    if(!text){ showToast('조건 내용을 입력하세요'); return; }
+    constraintPrompts.push({ line, text });
+    textEl.value = '';
+    renderPromptList();
+  });
+
+  function openSettings(){
+    document.getElementById('cfg-shipWarnDays').value = shipRiskThreshold;
+    document.getElementById('cfg-bufferDays').value = safetyBufferDays;
+    modalOverlay.classList.add('open');
+    settingsModal.classList.add('open');
+  }
+  function closeSettings(){
+    modalOverlay.classList.remove('open');
+    settingsModal.classList.remove('open');
+  }
+  document.getElementById('constraintBtn').addEventListener('click', openSettings);
+  modalOverlay.addEventListener('click', closeSettings);
+  document.getElementById('settingsClose').addEventListener('click', closeSettings);
+  document.getElementById('settingsCancel').addEventListener('click', closeSettings);
+  document.getElementById('settingsSave').addEventListener('click', () => {
+    shipRiskThreshold = Math.max(1, parseInt(document.getElementById('cfg-shipWarnDays').value, 10) || 7);
+    safetyBufferDays = Math.max(0, parseInt(document.getElementById('cfg-bufferDays').value, 10) || 0);
+    closeSettings();
+    showToast(`제약조건 저장 완료 · 조건 ${constraintPrompts.length}건 · 출하일 D-${shipRiskThreshold} 경고 · 최소 여유 ${safetyBufferDays}일`);
+    updateRegEstimate();
+    checkShipRisk();
+  });
+
+  // ---------- ship-date risk popup: flags orders due within `shipRiskThreshold` days that aren't finished ----------
+  const riskModalOverlay = document.getElementById('riskModalOverlay');
+  const riskModal = document.getElementById('riskModal');
+  function closeRiskModal(){
+    riskModalOverlay.classList.remove('open');
+    riskModal.classList.remove('open');
+  }
+  riskModalOverlay.addEventListener('click', closeRiskModal);
+  document.getElementById('riskModalClose').addEventListener('click', closeRiskModal);
+  document.getElementById('riskModalOk').addEventListener('click', closeRiskModal);
+
+  function computeAtRisk(){
+    const atRisk = [];
+    document.querySelectorAll('.blk').forEach(el => {
+      const shipDay = parseInt(el.dataset.ship.slice(8, 10), 10);
+      const dday = shipDay - TODAY;
+      if(dday > shipRiskThreshold) return;
+      const p = getProd(el);
+      const { remaining } = projectCompletion(p);
+      if(remaining > 0) atRisk.push({ el, dday, remaining, dailyTarget: p.steadyRate });
+    });
+    atRisk.sort((a, b) => a.dday - b.dday);
+    return atRisk;
+  }
+
+  // redraws the popup list in place; returns how many are still at risk
+  function renderRiskList(){
+    const atRisk = computeAtRisk();
+    const body = document.getElementById('riskModalBody');
+    if(atRisk.length === 0){
+      body.innerHTML = `<div class="risk-empty">🎉 출하 임박 오더가 모두 처리되었습니다</div>`;
+      return 0;
+    }
+    body.innerHTML = atRisk.map(r => `
+      <div class="risk-item" data-uid="${r.el.dataset.uid}">
+        <div class="risk-info">
+          <div class="rp">${r.el.dataset.po} · ${r.el.dataset.item}</div>
+          <div class="rd">${r.el.dataset.line} · 잔여 ${r.remaining.toLocaleString()}EA · 목표 ${r.dailyTarget.toLocaleString()}EA/일</div>
+        </div>
+        <span class="badge ${r.dday <= 3 ? 'crit' : 'warn'}">D${r.dday >= 0 ? '-' : '+'}${Math.abs(r.dday)}</span>
+        <button class="risk-extend-btn" data-uid="${r.el.dataset.uid}">연장 배정</button>
+      </div>
+    `).join('');
+    return atRisk.length;
+  }
+
+  function checkShipRisk(){
+    const count = renderRiskList();
+    if(count === 0) return;
+    riskModalOverlay.classList.add('open');
+    riskModal.classList.add('open');
+  }
+
+  // extends the block's own end date forward (start stays put) so the remaining
+  // qty gets scheduled right after what's already there -- no gap, no separate
+  // floating fragment, production stays one continuous run.
+  function extendAtRisk(el){
+    const p = getProd(el);
+    const { remaining } = projectCompletion(p);
+    if(remaining <= 0) return;
+    pushUndo();
+    const start = parseInt(el.dataset.start, 10);
+    const currentSpan = parseInt(el.dataset.span, 10);
+    const extraDays = Math.max(1, Math.ceil(remaining / p.steadyRate));
+    const maxSpan = 31 - start + 1;
+    const newSpan = Math.min(maxSpan, currentSpan + extraDays);
+    const capped = newSpan < currentSpan + extraDays;
+    positionBlock(el, start, newSpan);
+    el.dataset.span = newSpan;
+    delete productionState[el.dataset.uid];
+    refreshOverlapsForArea(el.parentElement);
+    showToast(`${el.dataset.po} 일정 연장 · ${fmtDay(start)}~${fmtDay(start + newSpan - 1)}로 이어서 배정${capped ? ' (7/31 한도로 일부만 반영)' : ''}`);
+  }
+
+  document.getElementById('riskModalBody').addEventListener('click', (e) => {
+    const extendBtn = e.target.closest('.risk-extend-btn');
+    if(extendBtn){
+      const el = document.querySelector(`.blk[data-uid="${extendBtn.dataset.uid}"]`);
+      if(el) extendAtRisk(el);
+      if(renderRiskList() === 0) closeRiskModal();
+      return;
+    }
+    const row = e.target.closest('.risk-item');
+    if(row){
+      const el = document.querySelector(`.blk[data-uid="${row.dataset.uid}"]`);
+      closeRiskModal();
+      if(el) openDetail(el);
+    }
+  });
+
+  setTimeout(checkShipRisk, 500);
+</script>
