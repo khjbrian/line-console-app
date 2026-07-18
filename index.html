@@ -491,6 +491,11 @@
     width:84px;font-family:var(--sans);font-size:12px;padding:4px 7px;border:1px solid var(--line);border-radius:5px;
     background:var(--surface);color:var(--ink);
   }
+  table.daily-table .headcount-input{
+    width:52px;font-family:var(--sans);font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:5px;
+    background:var(--surface);color:var(--ink);
+  }
+  table.daily-table .per-person{color:var(--ink-dim);}
   .halt-btn{
     width:100%;margin-top:10px;padding:8px;border-radius:6px;font-family:var(--sans);
     font-size:12.5px;font-weight:700;border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer;
@@ -511,7 +516,7 @@
       <button id="monthNext" aria-label="다음 달">›</button>
     </div>
     <div class="search">
-      🔎 <input type="text" placeholder="오더번호 · 바이어 · 품목 검색" />
+      🔎 <input type="text" placeholder="PO · 바이어 · 품목 검색" />
     </div>
     <div class="spacer"></div>
     <button class="btn" id="constraintBtn">제약조건 설정</button>
@@ -555,12 +560,12 @@
     <div class="import-row">
       <label class="btn" for="importFile">📄 엑셀/CSV로 오더 가져오기</label>
       <input type="file" id="importFile" accept=".csv,.xlsx" style="display:none" />
-      <span class="import-hint">헤더행에 오더번호·바이어·품목·수량·납기일(·일일생산량) 열이 있으면 자동 인식합니다. 일일생산량이 빠져 있으면 배정 전에 큐에서 직접 입력하도록 표시됩니다.</span>
+      <span class="import-hint">헤더행에 PO·바이어·품목·수량·납기일(·일일생산량) 열이 있으면 자동 인식합니다. 일일생산량이 빠져 있으면 배정 전에 큐에서 직접 입력하도록 표시됩니다.</span>
     </div>
     <div class="divider-or"><span>또는 직접 입력</span></div>
     <p class="hint">총주문수량과 일일예상생산량을 입력하면 소요일수·완료예정일을 자동계산해 큐에 등록합니다.</p>
     <div class="reg-form" id="regForm">
-      <div class="field po"><label>오더번호</label><input type="text" id="reg-po" placeholder="#33810" /></div>
+      <div class="field po"><label>PO</label><input type="text" id="reg-po" placeholder="#33810" /></div>
       <div class="field"><label>바이어</label><input type="text" id="reg-buyer" placeholder="STRAUSS" /></div>
       <div class="field"><label>품목</label><input type="text" id="reg-item" placeholder="ACTIVE PANTS" /></div>
       <div class="field qty"><label>총주문수량 (EA)</label><input type="number" id="reg-qty" placeholder="4800" min="1" /></div>
@@ -576,7 +581,7 @@
       <table class="queue">
         <thead>
           <tr>
-            <th>긴급도</th><th>오더번호</th><th>바이어</th><th>품목</th><th>수량</th><th>일일생산량 (소요일수)</th><th>납기일</th><th>추천 라인</th><th></th>
+            <th>긴급도</th><th>PO</th><th>바이어</th><th>품목</th><th>수량</th><th>일일생산량 (소요일수)</th><th>납기일</th><th>추천 라인</th><th></th>
           </tr>
         </thead>
         <tbody id="queueBody"></tbody>
@@ -595,7 +600,7 @@
 <div class="overlay" id="overlay"></div>
 <div class="detail" id="detail">
   <button class="close" id="detailClose" aria-label="닫기">✕</button>
-  <h2>오더번호</h2><input class="edit-input" id="d-po" />
+  <h2>PO</h2><input class="edit-input" id="d-po" />
   <div class="row">
     <div><h2>바이어</h2><input class="edit-input" id="d-buyer" /></div>
     <div><h2>총수량 (EA)</h2><input class="edit-input" type="number" min="1" id="d-qty" /></div>
@@ -611,10 +616,7 @@
       </select>
     </div>
   </div>
-  <div class="row">
-    <div><h2>시작일 (일)</h2><input class="edit-input" type="number" min="1" max="31" id="d-start" /></div>
-    <div><h2>소요일수</h2><input class="edit-input" type="number" min="1" max="31" id="d-span" /></div>
-  </div>
+  <h2>소요일수 (일)</h2><input class="edit-input" type="number" min="1" max="31" id="d-span" />
   <h2>출고예정일</h2><input class="edit-input" type="date" id="d-ship" />
   <h2>메모</h2><input class="edit-input" id="d-status" />
   <div class="detail-actions">
@@ -1074,9 +1076,15 @@
     let rampSum = 0;
     for(let i = 0; i < workdaysTotal; i++) rampSum += noRamp ? 1 : rampFraction(i);
     const steadyRate = Math.max(1, Math.round(total / rampSum));
-    const p = { total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, dailyLog: {} };
+    const lineShort = (el.dataset.line || '').split(' · ')[0];
+    const team = teamData.find(t => t.line === lineShort);
+    const defaultHeadcount = team ? team.members : 8;
+    const p = { total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, defaultHeadcount, dailyLog: {}, headcountLog: {} };
     for(let d = start; d <= Math.min(TODAY - 1, plannedEnd); d++){
-      if(!isSunday(d)) p.dailyLog[d] = targetForDay(p, d);
+      if(!isSunday(d)){
+        p.dailyLog[d] = targetForDay(p, d);
+        p.headcountLog[d] = defaultHeadcount;
+      }
     }
     productionState[uid] = p;
     return p;
@@ -1105,23 +1113,25 @@
     const days = prodDayRange(p);
     const targets = days.map(d => targetForDay(p, d));
     const maxVal = Math.max(...targets.map(t => t * 1.15), ...days.map(d => p.dailyLog[d] || 0), 1);
-    const barW = 16, gap = 8, h = 84;
+    const barW = 16, gap = 8, h = 84, topPad = 14;
     const w = days.length * (barW + gap) + gap;
     const targetPts = days.map((d, i) => {
       const x = gap + i * (barW + gap) + barW / 2;
-      return `${x},${h - (targets[i] / maxVal) * h}`;
+      return `${x},${topPad + h - (targets[i] / maxVal) * h}`;
     }).join(' ');
     const bars = days.map((d, i) => {
       const x = gap + i * (barW + gap);
       const v = p.dailyLog[d];
       const target = targets[i];
-      if(v === undefined) return `<rect x="${x}" y="${h - 3}" width="${barW}" height="3" rx="1.5" fill="var(--line)" />`;
+      if(v === undefined) return `<rect x="${x}" y="${topPad + h - 3}" width="${barW}" height="3" rx="1.5" fill="var(--line)" />`;
       const bh = Math.max(2, (v / maxVal) * h);
+      const barY = topPad + h - bh;
       const color = v >= target ? 'var(--ok)' : (v >= target * 0.6 ? 'var(--warn)' : 'var(--crit)');
-      return `<rect x="${x}" y="${h - bh}" width="${barW}" height="${bh}" rx="2" fill="${color}" />`;
+      const label = `<text x="${x + barW / 2}" y="${Math.max(9, barY - 3)}" text-anchor="middle" font-size="8" font-family="var(--mono)" fill="var(--ink-dim)">${v.toLocaleString()}</text>`;
+      return `<rect x="${x}" y="${barY}" width="${barW}" height="${bh}" rx="2" fill="${color}" />${label}`;
     }).join('');
     return `
-      <svg width="${w}" height="${h + 4}" viewBox="0 0 ${w} ${h + 4}">
+      <svg width="${w}" height="${h + topPad + 4}" viewBox="0 0 ${w} ${h + topPad + 4}">
         <polyline points="${targetPts}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round" />
         ${bars}
       </svg>`;
@@ -1151,6 +1161,13 @@
     if(riskSelect) riskSelect.value = newRisk;
   }
 
+  function perPersonText(p, day){
+    const v = p.dailyLog[day];
+    if(v === undefined) return '-';
+    const hc = p.headcountLog[day] || p.defaultHeadcount || 1;
+    return (v / hc).toFixed(1);
+  }
+
   function renderProdBox(el){
     const p = getProd(el);
     const days = prodDayRange(p);
@@ -1160,13 +1177,15 @@
       <div class="prod-chart-wrap" id="prodChartWrap"></div>
       <div class="daily-table-wrap">
         <table class="daily-table">
-          <thead><tr><th>일자</th><th>목표</th><th>실적 (EA)</th></tr></thead>
+          <thead><tr><th>일자</th><th>미싱사수</th><th>목표</th><th>실적 (EA)</th><th>인당생산량</th></tr></thead>
           <tbody id="dailyTableBody">
             ${days.map(d => `
               <tr class="${d >= TODAY ? 'future' : ''}">
                 <td>${fmtDay(d)} (${dow[(firstDow + d - 1) % 7]})</td>
+                <td><input type="number" min="1" class="headcount-input" data-day="${d}" value="${p.headcountLog[d] ?? ''}" placeholder="${p.defaultHeadcount}" /></td>
                 <td class="qty">${targetForDay(p, d).toLocaleString()}</td>
                 <td><input type="number" min="0" class="daily-input" data-day="${d}" value="${p.dailyLog[d] ?? ''}" placeholder="-" /></td>
+                <td class="qty per-person" id="pp-${d}">${perPersonText(p, d)}</td>
               </tr>
             `).join('')}
           </tbody>
@@ -1174,11 +1193,22 @@
       </div>
       <button class="halt-btn" id="prodHalt">생산 중단</button>
     `;
+    box.querySelectorAll('.headcount-input').forEach(input => {
+      input.addEventListener('input', () => {
+        const day = parseInt(input.dataset.day, 10);
+        const v = input.value === '' ? null : Math.max(1, parseInt(input.value, 10) || 1);
+        if(v === null) delete p.headcountLog[day]; else p.headcountLog[day] = v;
+        const cell = document.getElementById('pp-' + day);
+        if(cell) cell.textContent = perPersonText(p, day);
+      });
+    });
     box.querySelectorAll('.daily-input').forEach(input => {
       input.addEventListener('input', () => {
         const day = parseInt(input.dataset.day, 10);
         const v = input.value === '' ? null : Math.max(0, parseInt(input.value, 10) || 0);
         if(v === null) delete p.dailyLog[day]; else p.dailyLog[day] = v;
+        const cell = document.getElementById('pp-' + day);
+        if(cell) cell.textContent = perPersonText(p, day);
         refreshProdSummary(p, el);
       });
       input.addEventListener('change', () => checkShipRisk());
@@ -1206,7 +1236,6 @@
     document.getElementById('d-item').value = el.dataset.item;
     document.getElementById('d-line').value = el.dataset.line;
     document.getElementById('d-risk').value = el.dataset.risk;
-    document.getElementById('d-start').value = el.dataset.start;
     document.getElementById('d-span').value = el.dataset.span;
     document.getElementById('d-ship').value = el.dataset.ship;
     document.getElementById('d-status').value = el.dataset.status;
@@ -1234,10 +1263,9 @@
     el.dataset.ship = document.getElementById('d-ship').value || el.dataset.ship;
     el.dataset.status = document.getElementById('d-status').value.trim();
 
-    let start = Math.max(1, Math.min(31, parseInt(document.getElementById('d-start').value, 10) || 1));
+    const start = parseInt(el.dataset.start, 10);
     let span = Math.max(1, parseInt(document.getElementById('d-span').value, 10) || 1);
     span = Math.min(span, 32 - start);
-    el.dataset.start = start;
     el.dataset.span = span;
     positionBlock(el, start, span);
 
@@ -1653,7 +1681,7 @@
     const rate = parseInt(document.getElementById('reg-rate').value, 10);
     const due = document.getElementById('reg-due').value;
     if(!po || !buyer || !item || !qty || !rate || !due){
-      showToast('오더번호 · 바이어 · 품목 · 수량 · 생산량 · 납기일을 모두 입력하세요');
+      showToast('PO · 바이어 · 품목 · 수량 · 생산량 · 납기일을 모두 입력하세요');
       return;
     }
     const est = updateRegEstimate();
