@@ -114,6 +114,7 @@
     border-radius:7px;padding:6px 10px;color:var(--ink-faint);font-size:13px;min-width:200px;
   }
   .search input{border:none;background:transparent;outline:none;color:var(--ink);font-size:13px;width:100%;font-family:var(--sans);}
+  .search .btn{padding:4px 10px;font-size:12px;margin-left:2px;}
 
   .btn{
     font-family:var(--sans);font-size:13.5px;font-weight:600;border-radius:7px;border:1px solid var(--line);
@@ -212,17 +213,17 @@
   }
 
   .blk{
-    position:absolute;top:4px;bottom:4px;border-radius:6px;padding:5px 9px 5px 7px;color:#fff;cursor:grab;
-    display:flex;flex-direction:column;gap:1px;overflow:hidden;border-left:3px solid transparent;
+    position:absolute;top:4px;bottom:4px;border-radius:6px;padding:4px 8px 4px 6px;color:#fff;cursor:grab;
+    display:flex;flex-direction:column;gap:0px;overflow:hidden;border-left:3px solid transparent;
     box-shadow:0 1px 2px rgba(0,0,0,.15);transition:filter .1s ease, box-shadow .1s ease;user-select:none;touch-action:none;
     z-index:1;
   }
   .blk:hover{filter:brightness(1.08);}
   .blk.dragging{cursor:grabbing;filter:brightness(1.12);box-shadow:0 6px 18px -4px rgba(0,0,0,.4);z-index:5;}
-  .blk .buyer{font-family:var(--mono);font-size:9.5px;letter-spacing:.05em;opacity:.85;text-transform:uppercase;}
-  .blk .item{font-weight:700;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .blk .meta{font-size:10.5px;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .blk .ship{font-size:10px;margin-top:auto;opacity:.85;font-variant-numeric:tabular-nums;}
+  .blk .buyer{font-family:var(--mono);font-size:8px;line-height:1.25;letter-spacing:.04em;opacity:.85;text-transform:uppercase;}
+  .blk .item{font-weight:700;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .meta{font-size:8.5px;line-height:1.25;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .ship{font-size:8px;line-height:1.25;margin-top:auto;opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .blk.risk-ok{border-left-color:#ffffffb0;}
   .blk.risk-warn{border-left-color:var(--warn);}
   .blk.risk-crit{border-left-color:var(--crit);}
@@ -240,6 +241,8 @@
     padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
   }
   .blk.dimmed{opacity:.25;}
+  .blk.search-highlight{outline:3px solid var(--accent);outline-offset:2px;animation:search-pulse 1s ease-in-out 2;}
+  @keyframes search-pulse{ 0%,100%{outline-color:var(--accent);} 50%{outline-color:transparent;} }
   .blk.halted{
     background-image:repeating-linear-gradient(135deg, rgba(0,0,0,0) 0 6px, rgba(0,0,0,.18) 6px 12px);
   }
@@ -251,9 +254,9 @@
 
   .blk.pending{outline:2px dashed rgba(255,255,255,.75);outline-offset:-2px;}
   .confirm-badge{
-    position:absolute;top:3px;left:3px;z-index:2;width:14px;height:14px;border-radius:50%;
-    background:var(--ok);color:#fff;font-size:9px;font-weight:700;line-height:14px;text-align:center;
-    box-shadow:0 1px 3px rgba(0,0,0,.35);
+    position:absolute;top:-8px;left:3px;z-index:2;
+    background:var(--ok);color:#fff;font-size:9px;font-weight:700;letter-spacing:.02em;
+    padding:1px 5px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.35);
   }
   .pending-badge{
     position:absolute;top:-8px;left:3px;z-index:2;
@@ -557,9 +560,6 @@
       <span class="month-label" id="monthLabel">2026년 7월</span>
       <button id="monthNext" aria-label="다음 달">›</button>
     </div>
-    <div class="search">
-      🔎 <input type="text" placeholder="PO · 바이어 · 품목 검색" />
-    </div>
     <div class="spacer"></div>
     <button class="btn" id="constraintBtn">제약조건 설정</button>
     <button class="btn" id="undoBtn" title="실행 취소 (Ctrl+Z)">↺ 실행 취소</button>
@@ -575,6 +575,11 @@
   <!-- ================= BOARD ================= -->
   <div class="panel active" id="panel-board">
     <div class="legend">
+      <div class="search" id="boardSearch">
+        🔎 <input type="text" id="searchInput" placeholder="PO · 바이어 · 품목 검색" />
+        <button class="btn" id="searchBtn">검색</button>
+      </div>
+      <span class="sep"></span>
       <span class="label">바이어 필터</span>
       <div class="group" id="buyerLegend">
         <span class="chip" data-buyer="mtrl"><i class="dot" style="background:var(--b-mtrl)"></i>MTRL</span>
@@ -610,8 +615,8 @@
       <div class="field po"><label>PO</label><input type="text" id="reg-po" placeholder="#33810" /></div>
       <div class="field"><label>바이어</label><input type="text" id="reg-buyer" placeholder="STRAUSS" /></div>
       <div class="field"><label>품목</label><input type="text" id="reg-item" placeholder="ACTIVE PANTS" /></div>
-      <div class="field qty"><label>총주문수량 (EA)</label><input type="number" id="reg-qty" placeholder="4800" min="1" /></div>
-      <div class="field rate"><label>일일예상생산량 (EA/일)</label><input type="number" id="reg-rate" placeholder="480" min="1" /></div>
+      <div class="field qty"><label>총주문수량 (pcs)</label><input type="number" id="reg-qty" placeholder="4800" min="1" /></div>
+      <div class="field rate"><label>일일예상생산량 (pcs/일)</label><input type="number" id="reg-rate" placeholder="480" min="1" /></div>
       <div class="field"><label>납기일</label><input type="date" id="reg-due" value="2026-08-20" /></div>
       <div class="estimate" id="regEstimate">
         <span>소요일수 산정 대기</span>
@@ -645,7 +650,7 @@
   <h2>PO</h2><input class="edit-input" id="d-po" />
   <div class="row">
     <div><h2>바이어</h2><input class="edit-input" id="d-buyer" /></div>
-    <div><h2>총수량 (EA)</h2><input class="edit-input" type="number" min="1" id="d-qty" /></div>
+    <div><h2>총수량 (pcs)</h2><input class="edit-input" type="number" min="1" id="d-qty" /></div>
   </div>
   <h2>품목</h2><input class="edit-input" id="d-item" />
   <h2>배정 라인</h2><select class="edit-input" id="d-line"></select>
@@ -887,22 +892,22 @@
   // ---------- line/order data (start = day-of-month, span = days) ----------
   const lineDefs = [
     { name:'LINE 1', team:'1조 · 8명', skill:'숙련: PANTS 전종', orders:[
-      { start:1, span:9, buyerClass:'b-mtrl', buyer:'MTRL', item:'ACTIVE PANTS', po:'#27779', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
+      { start:1, span:9, buyerClass:'b-strauss', buyer:'STRAUSS', item:'ACTIVE PANTS', po:'#27779', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
       { start:10, span:8, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485', qty:5111, ship:'2026-08-11', risk:'warn', status:'납기 임박 주의' },
       { start:18, span:6, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485-2', qty:7871, ship:'2026-08-14', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 2', team:'2조 · 7명', skill:'숙련: PANTS', orders:[] },
     { name:'LINE 3', team:'3조 · 9명', skill:'숙련: SHIRT / JACKET', orders:[
-      { start:1, span:3, buyerClass:'b-mtrl', buyer:'MTRL', item:'Vanguard Softshell Combat Shirt', po:'#480', qty:1200, ship:'2026-07-20', risk:'ok', status:'정상 진행' },
+      { start:1, span:3, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Vanguard Softshell Combat Shirt', po:'#480', qty:1200, ship:'2026-07-20', risk:'ok', status:'정상 진행' },
       { start:4, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'Vanguard Softshell Combat Shirt', po:'#2000', qty:1500, ship:'2026-07-23', risk:'ok', status:'정상 진행' },
       { start:11, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'YUKON JACKET', po:'#31640', qty:15820, ship:'2026-08-05', risk:'crit', status:'대량 오더 · 납기 리스크 높음' },
     ]},
     { name:'LINE 4', team:'4조 · 8명', skill:'숙련: PANTS', orders:[
-      { start:1, span:5, buyerClass:'b-mtrl', buyer:'MTRL', item:'MBDU PANTS', po:'#1840', qty:1800, ship:'2026-07-23', risk:'ok', status:'정상 진행' },
+      { start:1, span:5, buyerClass:'b-strauss', buyer:'STRAUSS', item:'MBDU PANTS', po:'#1840', qty:1800, ship:'2026-07-23', risk:'ok', status:'정상 진행' },
       { start:6, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MBDU PANTS', po:'#8900', qty:3200, ship:'2026-08-28', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 5', team:'5조 · 8명', skill:'숙련: PANTS / ZIP-OFF', orders:[
-      { start:1, span:8, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU PANTS', po:'#350', qty:2400, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
+      { start:1, span:8, buyerClass:'b-strauss', buyer:'STRAUSS', item:'MCDU PANTS', po:'#350', qty:2400, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
       { start:9, span:7, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Trail Pants Men Zip Off', po:'#2100', qty:1900, ship:'2026-08-02', risk:'warn', status:'납기 임박 주의' },
       { start:16, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MCDU PANTS', po:'#10680', qty:3800, ship:'2026-09-18', risk:'ok', status:'정상 진행' },
     ]},
@@ -912,12 +917,12 @@
       { start:13, span:7, buyerClass:'b-entire', buyer:'ENTIRE', item:'Vanguard Pants', po:'#2140', qty:2200, ship:'2026-08-28', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 7', team:'7조 · 8명', skill:'숙련: SHORTS', orders:[
-      { start:1, span:6, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Worker', po:'#475', qty:1600, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
-      { start:7, span:7, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Worker', po:'#4055', qty:2800, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
-      { start:14, span:7, buyerClass:'b-ambitions', buyer:'AMBITIONS', item:'Short Men Champion', po:'#2083', qty:2100, ship:'2026-09-13', risk:'ok', status:'정상 진행' },
+      { start:1, span:6, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Short Men Worker', po:'#475', qty:1600, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+      { start:7, span:7, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Short Men Worker', po:'#4055', qty:2800, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+      { start:14, span:7, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Short Men Champion', po:'#2083', qty:2100, ship:'2026-09-13', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 8', team:'8조 · 6명', skill:'숙련: SUSPENDER', orders:[
-      { start:1, span:8, buyerClass:'b-mtrl', buyer:'MTRL', item:'Motion Suspenders', po:'#7800', qty:3000, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
+      { start:1, span:8, buyerClass:'b-strauss', buyer:'STRAUSS', item:'Motion Suspenders', po:'#7800', qty:3000, ship:'2026-08-02', risk:'ok', status:'정상 진행' },
       { start:9, span:9, buyerClass:'b-strauss', buyer:'STRAUSS 6차', item:'Motion Suspenders', po:'#11900', qty:2500, ship:'2026-09-30', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 9', team:'9조 · 7명', skill:'숙련: SUSPENDER', orders:[
@@ -926,13 +931,13 @@
     ]},
     { name:'LINE 10', team:'10조 · 8명', skill:'숙련: PANTS (낮음)', idleSlot:{ start:5, span:20 }, orders:[] },
     { name:'LINE 11', team:'11조 · 8명', skill:'숙련: PANTS 전종', orders:[
-      { start:1, span:9, buyerClass:'b-mtrl', buyer:'MTRL', item:'ACTIVE PANTS', po:'#27779-b', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
+      { start:1, span:9, buyerClass:'b-strauss', buyer:'STRAUSS', item:'ACTIVE PANTS', po:'#27779-b', qty:3600, ship:'2026-07-25', risk:'ok', status:'정상 진행' },
       { start:10, span:7, buyerClass:'b-strauss', buyer:'STRAUSS 7차', item:'ACTIVE PANTS', po:'#31485-b', qty:7871, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
     ]},
     { name:'LINE 12', team:'12조 · 7명', skill:'숙련: COMBAT SHIRT', orders:[
-      { start:1, span:4, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU Combat Shirts', po:'#200', qty:1200, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
+      { start:1, span:4, buyerClass:'b-strauss', buyer:'STRAUSS', item:'MCDU Combat Shirts', po:'#200', qty:1200, ship:'2026-07-30', risk:'ok', status:'정상 진행' },
       { start:5, span:8, buyerClass:'b-entire', buyer:'ENTIRE', item:'MCDU Combat Shirts', po:'#8620', qty:3400, ship:'2026-07-24', risk:'warn', status:'납기 임박 주의' },
-      { start:13, span:4, buyerClass:'b-mtrl', buyer:'MTRL', item:'MCDU Combat Shirts', po:'#876', qty:1300, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
+      { start:13, span:4, buyerClass:'b-strauss', buyer:'STRAUSS', item:'MCDU Combat Shirts', po:'#876', qty:1300, ship:'2026-08-30', risk:'ok', status:'정상 진행' },
     ]},
   ];
 
@@ -997,15 +1002,16 @@
 
   function renderBlockContent(div){
     const existingHandle = div.querySelector('.resize-handle');
-    const qtyFmt = Number(div.dataset.qty).toLocaleString() + ' EA';
+    const qtyFmt = Number(div.dataset.qty).toLocaleString() + ' pcs';
+    const { cumulativeActual, remaining } = projectCompletion(getProd(div));
     const confirmed = div.dataset.confirmed === 'true';
     div.classList.toggle('confirmed', confirmed);
     div.classList.toggle('pending', !confirmed);
     const modeLabel = div.dataset.lockMode === 'date' ? '완료일자 고정' : (div.dataset.lockMode === 'qty' ? '목표생산량 고정' : '');
-    div.title = `${div.dataset.buyer} · ${div.dataset.item} · ${div.dataset.po} · ${qtyFmt} · 출고 ${isoToShip(div.dataset.ship)}${confirmed ? ` · 확정(${modeLabel})` : ' · 확정 대기'}`;
-    div.innerHTML = `<span class="buyer">${div.dataset.buyer}</span><span class="item">${div.dataset.item}</span><span class="meta">${div.dataset.po} · ${qtyFmt}</span><span class="ship">출고 ${isoToShip(div.dataset.ship)}</span>`;
+    div.title = `${div.dataset.buyer} · ${div.dataset.item} · ${div.dataset.po} · ${qtyFmt} · 누적 ${cumulativeActual.toLocaleString()} · 잔여 ${remaining.toLocaleString()} · 출고 ${isoToShip(div.dataset.ship)}${confirmed ? ` · 확정(${modeLabel})` : ' · 확정 대기'}`;
+    div.innerHTML = `<span class="buyer">${div.dataset.buyer}</span><span class="item">${div.dataset.item}</span><span class="meta">${div.dataset.po} · ${qtyFmt} · 누적${cumulativeActual.toLocaleString()}/잔여${remaining.toLocaleString()}</span><span class="ship">출고 ${isoToShip(div.dataset.ship)}</span>`;
     if(confirmed){
-      div.insertAdjacentHTML('beforeend', `<span class="confirm-badge" title="확정됨 · ${modeLabel}">✓</span>`);
+      div.insertAdjacentHTML('beforeend', `<span class="confirm-badge" title="확정됨 · ${modeLabel}">확정</span>`);
     } else {
       div.insertAdjacentHTML('beforeend', `<span class="pending-badge" title="관리자 확정 대기">확정 대기</span>`);
     }
@@ -1032,7 +1038,7 @@
       const label = document.createElement('div');
       label.className = 'line-label';
       label.style.gridRow = rowIndex;
-      label.innerHTML = `<div class="lname">${line.name}</div><div class="team">${line.team}</div><div class="skill">${line.skill}</div>`;
+      label.innerHTML = `<div class="lname">${line.name}</div>`;
       boardGrid.appendChild(label);
 
       const area = document.createElement('div');
@@ -1179,8 +1185,42 @@
     });
   });
 
+  // ---------- search: single match jumps straight to it, multiple matches filter the board ----------
+  function matchesSearch(blk, query){
+    const q = query.toLowerCase();
+    return (blk.dataset.po || '').toLowerCase().includes(q)
+      || (blk.dataset.buyer || '').toLowerCase().includes(q)
+      || (blk.dataset.item || '').toLowerCase().includes(q);
+  }
+  function runSearch(){
+    const query = document.getElementById('searchInput').value.trim();
+    if(!query){ applyLegendFilters(); return; }
+    const all = [...document.querySelectorAll('.blk')];
+    const matches = all.filter(b => matchesSearch(b, query));
+    if(matches.length === 0){
+      showToast('검색 결과가 없습니다');
+      applyLegendFilters();
+      return;
+    }
+    if(matches.length === 1){
+      all.forEach(b => b.classList.remove('dimmed'));
+      const blk = matches[0];
+      blk.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      blk.classList.add('search-highlight');
+      setTimeout(() => blk.classList.remove('search-highlight'), 2000);
+      openDetail(blk);
+    } else {
+      all.forEach(b => b.classList.toggle('dimmed', !matches.includes(b)));
+      showToast(`검색 결과 ${matches.length}건 · 나머지는 흐리게 표시했습니다`);
+    }
+  }
+  document.getElementById('searchBtn').addEventListener('click', runSearch);
+  document.getElementById('searchInput').addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); runSearch(); }
+  });
+
   // ---------- production tracking state (keyed by block uid, not the editable PO text) ----------
-  // Model: `dailyLog` maps day-of-month -> actual EA produced that day. Days strictly
+  // Model: `dailyLog` maps day-of-month -> actual pcs produced that day. Days strictly
   // before TODAY are pre-seeded along the ramp-up curve (a clean "on plan" baseline,
   // editable); TODAY and beyond are left blank until entered, so the first real entry
   // is what actually moves the average and pushes the projected completion date.
@@ -1329,9 +1369,9 @@
     const deltaClass = delta <= 0 ? 'ok' : (delta <= 2 ? 'warn' : 'crit');
     const deltaLabel = delta <= 0 ? (remaining <= 0 ? '완료' : '정상 진행') : `+${delta}일 지연`;
     document.getElementById('prodSummary').innerHTML = `
-      <div class="plan-line">계획 총 <b>${p.total.toLocaleString()}EA</b> · 정상가동 목표 <b>${p.steadyRate.toLocaleString()}EA/일</b> (초기 저속가동 반영) · 계획완료 ${fmtDay(p.plannedEnd)} (시작 ${fmtDay(p.start)})</div>
+      <div class="plan-line">계획 총 <b>${p.total.toLocaleString()}pcs</b> · 정상가동 목표 <b>${p.steadyRate.toLocaleString()}pcs/일</b> (초기 저속가동 반영) · 계획완료 ${fmtDay(p.plannedEnd)} (시작 ${fmtDay(p.start)})</div>
       <div class="prog-track"><div class="prog-fill" style="width:${progressPct}%"></div></div>
-      <div class="prog-label"><span>누적실적 ${cumulativeActual.toLocaleString()}EA (${progressPct}%)</span><span>잔여 ${remaining.toLocaleString()}EA</span></div>
+      <div class="prog-label"><span>누적실적 ${cumulativeActual.toLocaleString()}pcs (${progressPct}%)</span><span>잔여 ${remaining.toLocaleString()}pcs</span></div>
       <div class="eta">
         <span>실적 기준 예상완료일 <span class="val">${fmtDay(projectedEnd)}</span></span>
         <span class="delta ${deltaClass}">${deltaLabel}</span>
@@ -1339,7 +1379,7 @@
     `;
     document.getElementById('prodChartWrap').innerHTML = renderDailyChartSVG(p);
     const haltBtn = document.getElementById('prodHalt');
-    if(haltBtn) haltBtn.textContent = `생산 중단 · 잔여 ${remaining.toLocaleString()}EA 미배정 큐로 이동`;
+    if(haltBtn) haltBtn.textContent = `생산 중단 · 잔여 ${remaining.toLocaleString()}pcs 미배정 큐로 이동`;
     const newRisk = deltaClass;
     el.classList.remove('risk-ok', 'risk-warn', 'risk-crit');
     el.classList.add('risk-' + newRisk);
@@ -1362,7 +1402,7 @@
       <div class="prod-chart-wrap" id="prodChartWrap"></div>
       <div class="daily-table-wrap">
         <table class="daily-table">
-          <thead><tr><th>일자</th><th>미싱사수</th><th>목표</th><th>실적 (EA)</th><th>인당생산량</th></tr></thead>
+          <thead><tr><th>일자</th><th>미싱사수</th><th>목표</th><th>실적 (pcs)</th><th>인당생산량</th></tr></thead>
           <tbody id="dailyTableBody">
             ${days.map(d => `
               <tr class="${d >= TODAY ? 'future' : ''}">
@@ -1595,7 +1635,7 @@
       const tr = document.createElement('tr');
       tr.id = 'q-' + q.id;
       const rateCell = q.dailyRate
-        ? `${q.dailyRate.toLocaleString()} EA/일 (${daysFor(q)}일)`
+        ? `${q.dailyRate.toLocaleString()} pcs/일 (${daysFor(q)}일)`
         : `<div class="rate-fill-cell">
              <input type="number" min="1" class="rate-fill-input" data-id="${q.id}" placeholder="일일생산량" />
              <span class="rate-fill-label">⚠ 미입력</span>
@@ -1608,7 +1648,7 @@
         <td style="font-family:var(--mono)">${q.po}</td>
         <td>${q.buyer}</td>
         <td>${q.item}</td>
-        <td class="qty">${q.qtyNum.toLocaleString()} EA</td>
+        <td class="qty">${q.qtyNum.toLocaleString()} pcs</td>
         <td class="qty">${rateCell}</td>
         <td class="qty">${q.due}</td>
         <td class="rec"><b>${q.rec}</b>${q.caution ? `<span class="caution">${q.caution}</span>` : ''}</td>
@@ -1631,7 +1671,7 @@
     q.dailyRate = v;
     q.caution = '';
     renderQueue();
-    showToast(`${q.po} 일일생산량 ${v.toLocaleString()}EA/일 반영 · 배정 가능`);
+    showToast(`${q.po} 일일생산량 ${v.toLocaleString()}pcs/일 반영 · 배정 가능`);
   });
 
   // ---------- excel/csv import ----------
@@ -1836,7 +1876,7 @@
       qtyNum: remaining, dailyRate: p.steadyRate, due: el.dataset.ship,
       rec: el.dataset.line.split(' · ')[0],
       resumed: true,
-      caution: `생산 재개 대기 · 기존 실적 ${cumulativeActual.toLocaleString()}EA 반영됨 (이어서 배정 필요)`,
+      caution: `생산 재개 대기 · 기존 실적 ${cumulativeActual.toLocaleString()}pcs 반영됨 (이어서 배정 필요)`,
     });
     renderQueue();
 
@@ -1864,7 +1904,7 @@
     }
     refreshOverlapsForArea(area);
     closeDetail();
-    showToast(`${el.dataset.po} 생산 중단 · 실적 ${cumulativeActual.toLocaleString()}EA는 보드에 남기고 잔여 ${remaining.toLocaleString()}EA는 미배정 큐로 이동`);
+    showToast(`${el.dataset.po} 생산 중단 · 실적 ${cumulativeActual.toLocaleString()}pcs는 보드에 남기고 잔여 ${remaining.toLocaleString()}pcs는 미배정 큐로 이동`);
   }
 
   // ---------- undo (Ctrl+Z / button): full snapshot of board + queue + production state ----------
@@ -2010,7 +2050,7 @@
 
   // ---------- recommendation score shared by both assignment modals ----------
   // lower is better: skill-matched lines rank first, ties broken by higher recent
-  // productivity (avg EA/day)
+  // productivity (avg pcs/day)
   function matchScore(lineShort, item){
     const team = teamData.find(t => t.line === lineShort);
     if(!team) return 9999;
@@ -2038,7 +2078,7 @@
       <div class="line-pick-item">
         <div class="lp-info">
           <div class="lp-name">${t.line}${i === 0 ? '<span class="lp-rec">★ 추천</span>' : ''}</div>
-          <div class="lp-meta">${t.team} · 숙련: ${t.skills.join(', ')} · 평균 ${t.avg.toLocaleString()}EA/일${t.idle ? ' · 유휴' : ''}</div>
+          <div class="lp-meta">${t.team} · 숙련: ${t.skills.join(', ')} · 평균 ${t.avg.toLocaleString()}pcs/일${t.idle ? ' · 유휴' : ''}</div>
         </div>
         <button class="line-pick-btn" data-line="${t.line}" data-qid="${queueId}">배정</button>
       </div>
@@ -2087,7 +2127,7 @@
         <div class="risk-item">
           <div class="risk-info">
             <div class="rp">${q.po} · ${q.item}${score <= 0 ? '<span class="lp-rec">★ 추천</span>' : ''}</div>
-            <div class="rd">${q.buyer} · ${q.qtyNum.toLocaleString()}EA${q.dailyRate ? ` · ${q.dailyRate.toLocaleString()}EA/일` : ' · ⚠ 일일생산량 미입력'}</div>
+            <div class="rd">${q.buyer} · ${q.qtyNum.toLocaleString()}pcs${q.dailyRate ? ` · ${q.dailyRate.toLocaleString()}pcs/일` : ' · ⚠ 일일생산량 미입력'}</div>
           </div>
           <span class="badge ${q.badge}">${q.dday}</span>
           <button class="risk-extend-btn" data-qid="${q.id}" ${q.dailyRate ? '' : 'disabled title="일일생산량을 먼저 입력하세요"'}>배정</button>
@@ -2158,7 +2198,7 @@
       <div class="head"><span class="line">${t.line}${t.idle ? ' · 유휴' : ''}</span><span class="members">${t.team} · ${t.members}명</span></div>
       <div class="skills">${t.skills.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
       <div class="stats">
-        <div class="avg"><div class="n">${t.avg}</div><div class="u">EA / 일 · 최근 4주 평균</div></div>
+        <div class="avg"><div class="n">${t.avg}</div><div class="u">pcs / 일 · 최근 4주 평균</div></div>
         ${sparkline(t.trend)}
       </div>
     `;
@@ -2273,7 +2313,7 @@
       <div class="risk-item" data-uid="${r.el.dataset.uid}">
         <div class="risk-info">
           <div class="rp">${r.el.dataset.po} · ${r.el.dataset.item}</div>
-          <div class="rd">${r.el.dataset.line} · 잔여 ${r.remaining.toLocaleString()}EA · 목표 ${r.dailyTarget.toLocaleString()}EA/일</div>
+          <div class="rd">${r.el.dataset.line} · 잔여 ${r.remaining.toLocaleString()}pcs · 목표 ${r.dailyTarget.toLocaleString()}pcs/일</div>
         </div>
         <span class="badge ${r.dday <= 3 ? 'crit' : 'warn'}">D${r.dday >= 0 ? '-' : '+'}${Math.abs(r.dday)}</span>
         <button class="risk-extend-btn" data-uid="${r.el.dataset.uid}">연장 배정</button>
