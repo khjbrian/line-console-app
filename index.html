@@ -1041,6 +1041,15 @@
       if(!mode) return;
       blk.classList.remove('dragging');
       blk.style.transform = '';
+      const wasRealDrag = blk._justDragged;
+      if(!wasRealDrag){
+        // pointerdown+pointerup with no movement in between -- a plain click, not a
+        // drag. Restore position/width exactly (undoes nothing since nothing moved)
+        // and let the native 'click' event that follows open the detail panel.
+        positionBlock(blk, parseInt(blk.dataset.start, 10), parseInt(blk.dataset.span, 10));
+        mode = null;
+        return;
+      }
       pushUndo();
       if(mode === 'move'){
         const prevArea = blk.parentElement;
