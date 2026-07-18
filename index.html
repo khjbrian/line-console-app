@@ -1,4 +1,4 @@
-<title>봉제라인 배정 콘솔</title>
+<title>봉제 스케줄표</title>
 <style>
   :root{
     --bg:#e7eae4;
@@ -105,6 +105,7 @@
     color:var(--ink);cursor:pointer;font-size:13px;
   }
   .month-nav button:hover{background:var(--line-soft);}
+  .month-nav #todayBtn{width:auto;padding:0 10px;margin-left:4px;font-family:var(--sans);font-weight:600;}
   .month-nav .month-label{font-size:13.5px;font-weight:600;min-width:96px;text-align:center;}
 
   .topbar .spacer{flex:1;}
@@ -186,9 +187,10 @@
   }
   .day-head{
     grid-row:1;
-    position:sticky;top:0;z-index:3;background:var(--surface-2);text-align:center;
+    position:sticky;top:0;z-index:3;background:var(--surface-2);text-align:center;cursor:pointer;
     padding:6px 2px;font-family:var(--mono);border-bottom:1px solid var(--line-soft);border-right:1px solid var(--line-soft);
   }
+  .day-head:hover{background:var(--line-soft);}
   .day-head .dow{display:block;font-size:9px;color:var(--ink-faint);font-weight:500;}
   .day-head .num{display:block;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
   .day-head.sunday{background:var(--sunday-bg);}
@@ -197,6 +199,12 @@
   .day-head.today .num{color:var(--accent);}
   .day-head.month-start{border-left:2px solid var(--ink);}
   .day-head .month-tag{color:var(--accent);font-weight:700;}
+  .day-head.holiday{background:var(--crit-bg);}
+  .day-head.holiday .num{color:var(--crit);}
+  .day-head.holiday .dow::after{content:" 휴";}
+  .holiday-line{
+    position:absolute;top:44px;bottom:0;pointer-events:none;background:var(--crit-bg);opacity:.6;
+  }
 
   .line-label{
     grid-column:1;
@@ -204,8 +212,6 @@
     padding:9px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line-soft);
   }
   .line-label .lname{font-weight:700;font-size:13.5px;}
-  .line-label .team{font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-top:2px;}
-  .line-label .skill{font-size:10.5px;color:var(--ink-faint);margin-top:4px;line-height:1.35;}
 
   .day-area{
     grid-column: 2 / -1;
@@ -311,17 +317,14 @@
   .assign-btn:hover{background:var(--accent);color:var(--accent-ink);}
 
   /* ---------- team cards ---------- */
-  .team-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(240px,1fr));gap:12px;}
+  .team-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(200px,1fr));gap:12px;}
   .team-card{
     background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:var(--shadow);
+    cursor:pointer;transition:border-color .1s ease;
   }
-  .team-card .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .team-card:hover{border-color:var(--accent);}
+  .team-card .head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
   .team-card .head .line{font-weight:700;font-size:14.5px;}
-  .team-card .head .members{font-family:var(--mono);font-size:11px;color:var(--ink-faint);}
-  .team-card .skills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
-  .skill-tag{
-    font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--line-soft);color:var(--ink-dim);
-  }
   .team-card .stats{display:flex;justify-content:space-between;align-items:flex-end;}
   .team-card .avg{font-family:var(--mono);}
   .team-card .avg .n{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
@@ -329,6 +332,11 @@
   .team-card svg{overflow:visible;}
   .team-card.idle{border-style:dashed;}
   .team-card.idle .head .line{color:var(--ink-faint);}
+  .ld-stats{display:flex;gap:10px;margin-bottom:14px;}
+  .ld-stats > div{flex:1;text-align:center;background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:10px 6px;}
+  .ld-num{font-family:var(--mono);font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .ld-label{font-size:10.5px;color:var(--ink-faint);margin-top:2px;}
+  .ld-chart{margin-bottom:14px;}
 
   /* ---------- slide-over ---------- */
   .overlay{
@@ -553,12 +561,13 @@
   <div class="topbar">
     <div class="brand">
       <span class="eyebrow">Kim Lien · 장갑부</span>
-      <h1>봉제라인 배정 콘솔</h1>
+      <h1>봉제 스케줄표</h1>
     </div>
     <div class="month-nav">
       <button id="monthPrev" aria-label="이전 달">‹</button>
       <span class="month-label" id="monthLabel">2026년 7월</span>
       <button id="monthNext" aria-label="다음 달">›</button>
+      <button id="todayBtn">오늘</button>
     </div>
     <div class="spacer"></div>
     <button class="btn" id="constraintBtn">제약조건 설정</button>
@@ -594,6 +603,7 @@
         <span class="chip" data-risk="warn"><i class="dot" style="background:var(--warn)"></i>D-14 이내</span>
         <span class="chip" data-risk="ok"><i class="dot" style="background:#ffffffb0;border:1px solid var(--line)"></i>여유</span>
       </div>
+      <button class="btn" id="clearFiltersBtn">모든 필터 해제</button>
     </div>
 
     <p class="hint">바를 드래그하면 라인/날짜 이동, 오른쪽 끝을 드래그하면 기간 확장·축소가 됩니다. 클릭하면 세부 내용을 직접 수정할 수 있습니다.</p>
@@ -622,7 +632,7 @@
         <span>소요일수 산정 대기</span>
         <span class="sub">수량 · 생산량을 입력하세요</span>
       </div>
-      <button class="btn primary" id="regSubmit">미배정 큐에 등록</button>
+      <button class="btn primary" id="regSubmit">오더 직접 등록</button>
     </div>
     <div class="queue-wrap">
       <table class="queue">
@@ -731,6 +741,13 @@
   <div id="quickAssignBody"></div>
 </div>
 
+<div class="modal-overlay" id="lineDetailOverlay"></div>
+<div class="modal" id="lineDetailModal">
+  <button class="close" id="lineDetailClose" aria-label="닫기">✕</button>
+  <h3 id="lineDetailTitle">LINE</h3>
+  <div id="lineDetailBody"></div>
+</div>
+
 <script>
   // ---------- calendar basics (July 2026; 1st is a Wednesday; Sundays are non-working) ----------
   // TODAY tracks the real clock, clamped into the July 2026 sample window -- so the
@@ -741,16 +758,30 @@
   const firstDow = 3;
   const DAY_W = 56;
   function isSunday(day){ return ((firstDow + day - 1) % 7) === 0; }
+  // manually-declared non-working days (toggled by clicking a day-head header cell) --
+  // treated exactly like Sundays everywhere production quantity/duration is computed
+  const holidaySet = new Set();
+  function isHoliday(day){ return holidaySet.has(day); }
+  function isNonWorkday(day){ return isSunday(day) || isHoliday(day); }
   function workdaysBetween(a, b){
     if(b < a) return 0;
     let n = 0;
-    for(let d = a; d <= b; d++) if(!isSunday(d)) n++;
+    for(let d = a; d <= b; d++) if(!isNonWorkday(d)) n++;
     return n;
   }
   function addWorkdays(fromDay, n){
     let d = fromDay, left = n;
-    while(left > 0){ d++; if(!isSunday(d)) left--; }
+    while(left > 0){ d++; if(!isNonWorkday(d)) left--; }
     return d;
+  }
+  // calendar span (inclusive day count) needed to fit `workdaysNeeded` actual working
+  // days starting at startDay, skipping Sundays/holidays -- this is what should be used
+  // as a block's on-calendar width, since a pure workday count understates it whenever
+  // a non-workday falls inside the range.
+  function calendarSpanFor(startDay, workdaysNeeded){
+    if(workdaysNeeded <= 0) return 1;
+    const endDay = addWorkdays(startDay - 1, workdaysNeeded);
+    return endDay - startDay + 1;
   }
   // NOTE: fmtDay/dayNumToISO rely on dayNumToDate, defined below once viewDays exists.
   // Safe: nothing calls them until user interaction, well after that point in the script.
@@ -824,7 +855,7 @@
   const boardWrap = document.getElementById('boardWrap');
   const corner = document.createElement('div');
   corner.className = 'corner';
-  corner.textContent = 'LINE / 조';
+  corner.textContent = 'Line';
   boardGrid.appendChild(corner);
 
   boardGrid.style.gridTemplateColumns = `172px repeat(${viewDays.length}, ${DAY_W}px)`;
@@ -841,6 +872,7 @@
     const head = document.createElement('div');
     head.className = 'day-head';
     head.style.gridColumn = col;
+    head.title = '클릭해서 휴무일로 지정/해제';
     if(w === 0) head.classList.add('sunday');
     if(i === todayIndex) head.classList.add('today');
     if(dd.day === 1){
@@ -855,6 +887,7 @@
     } else {
       head.innerHTML = `<span class="dow">${dow[w]}</span><span class="num">${dd.day}</span>`;
     }
+    head.addEventListener('click', () => toggleHoliday(i + 1, head));
     boardGrid.appendChild(head);
   });
   if(todayIndex >= 0){
@@ -863,6 +896,31 @@
     todayLine.style.left = (172 + todayIndex * DAY_W) + 'px';
     todayLine.style.width = DAY_W + 'px';
     boardGrid.appendChild(todayLine);
+  }
+
+  // clicking a day-head marks/unmarks it as a 휴무일 -- treated exactly like Sunday in
+  // every production quantity/duration calculation (see isNonWorkday). Since that
+  // changes the workday math for every order at once, cached production state gets
+  // wiped and every block + the open detail panel (if any) is refreshed.
+  function toggleHoliday(dayNum, headEl){
+    const turningOn = !holidaySet.has(dayNum);
+    if(turningOn) holidaySet.add(dayNum); else holidaySet.delete(dayNum);
+    headEl.classList.toggle('holiday', turningOn);
+    const existingLine = boardGrid.querySelector(`.holiday-line[data-day="${dayNum}"]`);
+    if(turningOn && !existingLine){
+      const line = document.createElement('div');
+      line.className = 'holiday-line';
+      line.dataset.day = dayNum;
+      line.style.left = (172 + (dayNum - 1) * DAY_W) + 'px';
+      line.style.width = DAY_W + 'px';
+      boardGrid.appendChild(line);
+    } else if(!turningOn && existingLine){
+      existingLine.remove();
+    }
+    Object.keys(productionState).forEach(k => delete productionState[k]);
+    document.querySelectorAll('.blk').forEach(renderBlockContent);
+    if(currentEl) openDetail(currentEl);
+    showToast(turningOn ? `${fmtDay(dayNum)}을 휴무일로 지정했습니다 · 생산량/소요일 계산에서 제외됩니다` : `${fmtDay(dayNum)} 휴무일 해제`);
   }
 
   // month label reflects whatever month is currently scrolled to the left edge
@@ -888,6 +946,10 @@
   }
   document.getElementById('monthPrev').addEventListener('click', () => scrollToAdjacentMonth(-1));
   document.getElementById('monthNext').addEventListener('click', () => scrollToAdjacentMonth(1));
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    if(todayIndex < 0){ showToast('오늘은 샘플 데이터 기간(7~10월) 밖입니다'); return; }
+    boardWrap.scrollTo({ left: todayIndex * DAY_W, behavior: 'smooth' });
+  });
 
   // ---------- line/order data (start = day-of-month, span = days) ----------
   const lineDefs = [
@@ -1218,6 +1280,12 @@
   document.getElementById('searchInput').addEventListener('keydown', (e) => {
     if(e.key === 'Enter'){ e.preventDefault(); runSearch(); }
   });
+  document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+    document.querySelectorAll('#buyerLegend .chip, #riskLegend .chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('searchInput').value = '';
+    document.querySelectorAll('.blk').forEach(b => b.classList.remove('dimmed'));
+    showToast('모든 필터를 해제했습니다');
+  });
 
   // ---------- production tracking state (keyed by block uid, not the editable PO text) ----------
   // Model: `dailyLog` maps day-of-month -> actual pcs produced that day. Days strictly
@@ -1273,7 +1341,7 @@
       originalPlannedEnd: null,
     };
     for(let d = start; d <= Math.min(TODAY - 1, plannedEnd); d++){
-      if(!isSunday(d)){
+      if(!isNonWorkday(d)){
         const t = liveTargetForDay(p, d);
         p.targetLog[d] = t;
         p.dailyLog[d] = t;
@@ -1319,7 +1387,7 @@
 
   function prodDayRange(p){
     const days = [];
-    for(let d = p.start; d <= Math.max(p.plannedEnd, TODAY); d++) if(!isSunday(d)) days.push(d);
+    for(let d = p.start; d <= Math.max(p.plannedEnd, TODAY); d++) if(!isNonWorkday(d)) days.push(d);
     return days;
   }
 
@@ -1627,7 +1695,12 @@
     { id:'33344', badge:'ok', dday:'D-20', po:'#33344', buyer:'AMBITIONS', item:'SHORT MEN CHAMPION', qtyNum:1800, dailyRate:350, due:'2026-08-05', rec:'LINE 7', caution:'' },
     { id:'33501', badge:'ok', dday:'D-27', po:'#33501', buyer:'ENTIRE', item:'YUKON JACKET (2차)', qtyNum:9500, dailyRate:380, due:'2026-08-12', rec:'LINE 3', caution:'' },
   ];
-  function daysFor(q){ return q.dailyRate ? daysForRamped(q.qtyNum, q.dailyRate) : null; }
+  // returns the actual calendar span (skipping Sunday/holiday), not a pure workday count
+  function daysFor(q, startDay){
+    if(!q.dailyRate) return null;
+    const workdays = daysForRamped(q.qtyNum, q.dailyRate);
+    return calendarSpanFor(startDay || TODAY, workdays);
+  }
   const queueBody = document.getElementById('queueBody');
   function renderQueue(){
     queueBody.innerHTML = '';
@@ -1839,7 +1912,7 @@
     const area = lineAreaByName[targetLineName];
     if(!area) return null;
     const start = startDay || TODAY;
-    const span = Math.min(viewDays.length - start + 1, daysFor(item));
+    const span = Math.min(viewDays.length - start + 1, daysFor(item, start));
     const block = createBlock({
       start, span, buyerClass: buyerClassFor(item.buyer), buyer: item.buyer,
       item: item.item, po: item.po, qty: item.qtyNum, ship: item.due, risk: item.badge,
@@ -1979,9 +2052,10 @@
       box.innerHTML = `<span>소요일수 산정 대기</span><span class="sub">수량 · 생산량을 입력하세요</span>`;
       return null;
     }
-    const days = daysForRamped(qty, rate);
+    const workdaysNeeded = daysForRamped(qty, rate);
     const start = TODAY;
-    const end = addWorkdays(start, days - 1);
+    const span = calendarSpanFor(start, workdaysNeeded);
+    const end = start + span - 1;
     let bufferHtml = '';
     if(due){
       const dueDay = parseInt(due.slice(8, 10), 10);
@@ -1990,8 +2064,8 @@
         ? `<span class="sub buffer-warn">⚠ 납기까지 여유 ${buffer}일 (최소 ${safetyBufferDays}일 권장)</span>`
         : `<span class="sub">납기까지 여유 ${buffer}일</span>`;
     }
-    box.innerHTML = `<span><b>${days}일</b> 소요 (초기 저속가동 반영 · 일요일 제외)</span><span class="sub">${fmtDay(start)} 시작 → 예상완료 ${fmtDay(end)}</span>${bufferHtml}`;
-    return { days, start, end };
+    box.innerHTML = `<span><b>${span}일</b> 소요 (초기 저속가동 반영 · 휴무일 제외)</span><span class="sub">${fmtDay(start)} 시작 → 예상완료 ${fmtDay(end)}</span>${bufferHtml}`;
+    return { days: span, start, end };
   }
   document.getElementById('reg-qty').addEventListener('input', updateRegEstimate);
   document.getElementById('reg-rate').addEventListener('input', updateRegEstimate);
@@ -2116,7 +2190,7 @@
     document.getElementById('quickAssignTitle').textContent = `${lineLabel} · 7/${day}부터 배정 — 미배정 오더 선택`;
     const ranked = queueData.map(q => ({
       q,
-      dday: parseInt(q.dday.replace('D', ''), 10),
+      dday: parseInt(q.dday.slice(2), 10), // "D-3" -> 3 (most urgent = smallest)
       score: matchScore(lineShort, q),
     })).sort((a, b) => (a.dday - b.dday) || (a.score - b.score));
     const body = document.getElementById('quickAssignBody');
@@ -2195,14 +2269,64 @@
     const card = document.createElement('div');
     card.className = 'team-card' + (t.idle ? ' idle' : '');
     card.innerHTML = `
-      <div class="head"><span class="line">${t.line}${t.idle ? ' · 유휴' : ''}</span><span class="members">${t.team} · ${t.members}명</span></div>
-      <div class="skills">${t.skills.map(s=>`<span class="skill-tag">${s}</span>`).join('')}</div>
+      <div class="head"><span class="line">${t.line}${t.idle ? ' · 유휴' : ''}</span></div>
       <div class="stats">
         <div class="avg"><div class="n">${t.avg}</div><div class="u">pcs / 일 · 최근 4주 평균</div></div>
         ${sparkline(t.trend)}
       </div>
     `;
+    card.addEventListener('click', () => openLineDetail(t));
     teamGrid.appendChild(card);
+  });
+
+  // ---------- line detail modal (조 편성 현황 tab) ----------
+  const lineDetailOverlay = document.getElementById('lineDetailOverlay');
+  const lineDetailModalEl = document.getElementById('lineDetailModal');
+  function closeLineDetail(){
+    lineDetailOverlay.classList.remove('open');
+    lineDetailModalEl.classList.remove('open');
+  }
+  lineDetailOverlay.addEventListener('click', closeLineDetail);
+  document.getElementById('lineDetailClose').addEventListener('click', closeLineDetail);
+
+  function openLineDetail(t){
+    const areaName = Object.keys(lineAreaByName).find(n => n.startsWith(t.line + ' ·'));
+    const area = areaName ? lineAreaByName[areaName] : null;
+    const orders = area ? [...area.querySelectorAll('.blk')].sort((a, b) => parseInt(a.dataset.start, 10) - parseInt(b.dataset.start, 10)) : [];
+    const assignedDays = orders.reduce((sum, b) => sum + parseInt(b.dataset.span, 10), 0);
+    const utilizationPct = Math.min(100, Math.round((assignedDays / viewDays.length) * 100));
+    const riskLabel = { ok: '정상', warn: '주의', crit: '위험' };
+
+    document.getElementById('lineDetailTitle').textContent = `${t.line}${t.idle ? ' · 유휴' : ''}`;
+    document.getElementById('lineDetailBody').innerHTML = `
+      <div class="ld-stats">
+        <div><div class="ld-num">${t.avg.toLocaleString()}</div><div class="ld-label">pcs/일 평균</div></div>
+        <div><div class="ld-num">${orders.length}</div><div class="ld-label">배정 오더</div></div>
+        <div><div class="ld-num">${utilizationPct}%</div><div class="ld-label">가동률 (표시기간 기준)</div></div>
+      </div>
+      <div class="ld-chart">${sparkline(t.trend)}</div>
+      <h2>배정 오더</h2>
+      ${orders.length === 0 ? `<div class="risk-empty">배정된 오더가 없습니다</div>` : orders.map(b => {
+        const start = parseInt(b.dataset.start, 10), span = parseInt(b.dataset.span, 10);
+        return `
+        <div class="risk-item" data-uid="${b.dataset.uid}">
+          <div class="risk-info">
+            <div class="rp">${b.dataset.po} · ${b.dataset.item}</div>
+            <div class="rd">${fmtDay(start)}~${fmtDay(start + span - 1)} · ${Number(b.dataset.qty).toLocaleString()}pcs · ${b.dataset.confirmed === 'true' ? '확정' : '확정 대기'}</div>
+          </div>
+          <span class="badge ${b.dataset.risk}">${riskLabel[b.dataset.risk] || b.dataset.risk}</span>
+        </div>`;
+      }).join('')}
+    `;
+    lineDetailOverlay.classList.add('open');
+    lineDetailModalEl.classList.add('open');
+  }
+  document.getElementById('lineDetailBody').addEventListener('click', (e) => {
+    const row = e.target.closest('.risk-item');
+    if(!row) return;
+    const blk = document.querySelector(`.blk[data-uid="${row.dataset.uid}"]`);
+    closeLineDetail();
+    if(blk) openDetail(blk);
   });
 
   // ---------- constraint settings modal ----------
@@ -2339,10 +2463,12 @@
     pushUndo();
     const start = parseInt(el.dataset.start, 10);
     const currentSpan = parseInt(el.dataset.span, 10);
-    const extraDays = Math.max(1, Math.ceil(remaining / p.steadyRate));
+    const currentEnd = start + currentSpan - 1;
+    const extraWorkdays = Math.max(1, Math.ceil(remaining / p.steadyRate));
+    const wantedEnd = addWorkdays(currentEnd, extraWorkdays); // skips Sunday/holiday
     const maxSpan = viewDays.length - start + 1;
-    const newSpan = Math.min(maxSpan, currentSpan + extraDays);
-    const capped = newSpan < currentSpan + extraDays;
+    const newSpan = Math.min(maxSpan, wantedEnd - start + 1);
+    const capped = newSpan < wantedEnd - start + 1;
     positionBlock(el, start, newSpan);
     el.dataset.span = newSpan;
     delete productionState[el.dataset.uid];
