@@ -168,14 +168,11 @@
     position:absolute;top:44px;bottom:0;pointer-events:none;
     border-left:2px solid var(--accent);border-right:2px solid var(--accent);
   }
+  .month-divider{
+    position:absolute;top:44px;bottom:0;pointer-events:none;border-left:1px solid var(--ink);opacity:.25;
+  }
   .sunday-line{
     position:absolute;top:44px;bottom:0;pointer-events:none;background:var(--sunday-bg);
-  }
-  .board-grid.other-month .blk,
-  .board-grid.other-month .idle-slot{display:none;}
-  .other-month-hint{
-    text-align:center;padding:40px 10px;color:var(--ink-faint);font-size:13px;
-    position:absolute;left:172px;right:0;top:44px;
   }
 
   .corner{
@@ -197,10 +194,12 @@
   .day-head.sunday .num{color:var(--crit);}
   .day-head.today{background:var(--today-bg);}
   .day-head.today .num{color:var(--accent);}
+  .day-head.month-start{border-left:2px solid var(--ink);}
+  .day-head .month-tag{color:var(--accent);font-weight:700;}
 
   .line-label{
     grid-column:1;
-    position:sticky;left:0;z-index:1;background:var(--surface-2);
+    position:sticky;left:0;z-index:2;background:var(--surface-2);
     padding:9px 10px;border-right:1px solid var(--line);border-bottom:1px solid var(--line-soft);
   }
   .line-label .lname{font-weight:700;font-size:13.5px;}
@@ -593,7 +592,7 @@
     </div>
 
     <p class="hint">바를 드래그하면 라인/날짜 이동, 오른쪽 끝을 드래그하면 기간 확장·축소가 됩니다. 클릭하면 세부 내용을 직접 수정할 수 있습니다.</p>
-    <div class="board-wrap">
+    <div class="board-wrap" id="boardWrap">
       <div class="board-grid" id="boardGrid"></div>
     </div>
   </div>
@@ -734,7 +733,10 @@
 
 <script>
   // ---------- calendar basics (July 2026; 1st is a Wednesday; Sundays are non-working) ----------
-  const TODAY = 16;
+  // TODAY tracks the real clock, clamped into the July 2026 sample window -- so the
+  // "today" marker keeps itself correct as real days pass, instead of a stale constant.
+  const __now = new Date();
+  const TODAY = (__now.getFullYear() === 2026 && __now.getMonth() === 6) ? __now.getDate() : 16;
   const dow = ['일','월','화','수','목','금','토'];
   const firstDow = 3;
   const DAY_W = 56;
@@ -774,70 +776,87 @@
   }
 
   // ---------- header row (day numbers, sticky) ----------
-  // NOTE: all production math (isSunday/workdaysBetween/addWorkdays/TODAY above) is
-  // fixed to July 2026 -- that's the only month with real sample data. The calendar
-  // header below is a separate, independently-navigable "view" on top of it: browsing
-  // to another month changes what's *displayed* (day columns, sunday shading, today
-  // marker) but never touches the underlying schedule data or math.
-  const REAL_MONTH = { year: 2026, month: 7, day: TODAY };
-  let viewYear = REAL_MONTH.year, viewMonth = REAL_MONTH.month;
+  // NOTE: all production math (isSunday/workdaysBetween/addWorkdays/TODAY above) stays
+  // in plain "day-of-month" terms and is fixed to July 2026 -- that's the only month
+  // with real sample data, and day 1 of July is defined to sit at pixel 0 of the
+  // scrollable day-area (i.e. right after the sticky LINE/조 column). The calendar
+  // is otherwise a single continuous strip -- July through October 2026 -- so scrolling
+  // right just keeps revealing more days instead of hitting a wall at July 31; there's
+  // nothing to click or rebuild to "go to next month."
+  const EPOCH = { year: 2026, month: 7 }; // index 0 of viewDays = July 1, 2026
+  const VIEW_MONTHS = 4; // July, August, September, October
+  function addMonths(y, m, delta){
+    const d = new Date(y, m - 1 + delta, 1);
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  }
   function daysInViewMonth(y, m){ return new Date(y, m, 0).getDate(); }
   function viewDow(y, m, d){ return new Date(y, m - 1, d).getDay(); } // 0=Sun..6=Sat, matches `dow` array
+  const viewDays = (() => {
+    const days = [];
+    for(let i = 0; i < VIEW_MONTHS; i++){
+      const { year, month } = addMonths(EPOCH.year, EPOCH.month, i);
+      const dim = daysInViewMonth(year, month);
+      for(let d = 1; d <= dim; d++) days.push({ year, month, day: d });
+    }
+    return days;
+  })();
+  const todayIndex = viewDays.findIndex(d => d.year === __now.getFullYear() && d.month === __now.getMonth() + 1 && d.day === __now.getDate());
 
   const boardGrid = document.getElementById('boardGrid');
+  const boardWrap = document.getElementById('boardWrap');
   const corner = document.createElement('div');
   corner.className = 'corner';
   corner.textContent = 'LINE / 조';
   boardGrid.appendChild(corner);
 
-  function renderCalendarHeader(){
-    boardGrid.querySelectorAll('.day-head, .today-line, .sunday-line, .other-month-hint').forEach(el => el.remove());
-    const dim = daysInViewMonth(viewYear, viewMonth);
-    boardGrid.style.gridTemplateColumns = `172px repeat(${dim}, ${DAY_W}px)`;
-    const isRealMonth = viewYear === REAL_MONTH.year && viewMonth === REAL_MONTH.month;
-    boardGrid.classList.toggle('other-month', !isRealMonth);
-
-    for(let d = 1; d <= dim; d++){
-      const w = viewDow(viewYear, viewMonth, d);
-      if(w === 0){
-        const line = document.createElement('div');
-        line.className = 'sunday-line';
-        line.style.left = (172 + (d - 1) * DAY_W) + 'px';
-        line.style.width = DAY_W + 'px';
-        boardGrid.appendChild(line);
+  boardGrid.style.gridTemplateColumns = `172px repeat(${viewDays.length}, ${DAY_W}px)`;
+  viewDays.forEach((dd, i) => {
+    const col = i + 2;
+    const w = viewDow(dd.year, dd.month, dd.day);
+    if(w === 0){
+      const line = document.createElement('div');
+      line.className = 'sunday-line';
+      line.style.left = (172 + i * DAY_W) + 'px';
+      line.style.width = DAY_W + 'px';
+      boardGrid.appendChild(line);
+    }
+    const head = document.createElement('div');
+    head.className = 'day-head';
+    head.style.gridColumn = col;
+    if(w === 0) head.classList.add('sunday');
+    if(i === todayIndex) head.classList.add('today');
+    if(dd.day === 1){
+      head.classList.add('month-start');
+      head.innerHTML = `<span class="dow month-tag">${dd.month}월</span><span class="num">${dd.day}</span>`;
+      if(i > 0){
+        const divider = document.createElement('div');
+        divider.className = 'month-divider';
+        divider.style.left = (172 + i * DAY_W) + 'px';
+        boardGrid.appendChild(divider);
       }
-      const head = document.createElement('div');
-      head.className = 'day-head';
-      head.style.gridColumn = d + 1;
-      if(w === 0) head.classList.add('sunday');
-      if(isRealMonth && d === REAL_MONTH.day) head.classList.add('today');
-      head.innerHTML = `<span class="dow">${dow[w]}</span><span class="num">${d}</span>`;
-      boardGrid.appendChild(head);
-    }
-    if(isRealMonth){
-      const todayLine = document.createElement('div');
-      todayLine.className = 'today-line';
-      todayLine.style.left = (172 + (REAL_MONTH.day - 1) * DAY_W) + 'px';
-      todayLine.style.width = DAY_W + 'px';
-      boardGrid.appendChild(todayLine);
     } else {
-      const hint = document.createElement('div');
-      hint.className = 'other-month-hint';
-      hint.textContent = '이 목업의 샘플 배정 데이터는 2026년 7월 기준입니다 · 다른 달은 빈 캘린더로 표시됩니다';
-      boardGrid.appendChild(hint);
+      head.innerHTML = `<span class="dow">${dow[w]}</span><span class="num">${dd.day}</span>`;
     }
-    document.getElementById('monthLabel').textContent = `${viewYear}년 ${viewMonth}월`;
+    boardGrid.appendChild(head);
+  });
+  if(todayIndex >= 0){
+    const todayLine = document.createElement('div');
+    todayLine.className = 'today-line';
+    todayLine.style.left = (172 + todayIndex * DAY_W) + 'px';
+    todayLine.style.width = DAY_W + 'px';
+    boardGrid.appendChild(todayLine);
   }
-  renderCalendarHeader();
 
-  document.getElementById('monthPrev').addEventListener('click', () => {
-    viewMonth--; if(viewMonth < 1){ viewMonth = 12; viewYear--; }
-    renderCalendarHeader();
-  });
-  document.getElementById('monthNext').addEventListener('click', () => {
-    viewMonth++; if(viewMonth > 12){ viewMonth = 1; viewYear++; }
-    renderCalendarHeader();
-  });
+  // month label reflects whatever month is currently scrolled to the left edge
+  function updateMonthLabel(){
+    const index = Math.max(0, Math.min(viewDays.length - 1, Math.round(boardWrap.scrollLeft / DAY_W)));
+    const d = viewDays[index];
+    document.getElementById('monthLabel').textContent = `${d.year}년 ${d.month}월`;
+  }
+  updateMonthLabel();
+  boardWrap.addEventListener('scroll', updateMonthLabel, { passive: true });
+  document.getElementById('monthPrev').addEventListener('click', () => boardWrap.scrollBy({ left: -30 * DAY_W, behavior: 'smooth' }));
+  document.getElementById('monthNext').addEventListener('click', () => boardWrap.scrollBy({ left: 30 * DAY_W, behavior: 'smooth' }));
 
   // ---------- line/order data (start = day-of-month, span = days) ----------
   const lineDefs = [
@@ -1001,12 +1020,12 @@
       // clicking empty space on a line/day opens a quick-assign picker for that slot
       area.addEventListener('click', (e) => {
         if(e.target !== area && !e.target.classList.contains('idle-slot')) return; // a real block was clicked
-        if(boardGrid.classList.contains('other-month')){
-          showToast('배정 데이터는 2026년 7월 기준입니다 · 7월로 이동 후 다시 시도하세요');
+        const rect = area.getBoundingClientRect();
+        const day = Math.floor((e.clientX - rect.left) / DAY_W) + 1;
+        if(day < 1 || day > 31){
+          showToast('배정 가능한 기간은 7월 1일~31일입니다 (샘플 데이터 기준)');
           return;
         }
-        const rect = area.getBoundingClientRect();
-        const day = Math.max(1, Math.min(31, Math.floor((e.clientX - rect.left) / DAY_W) + 1));
         openQuickAssign(lineLabel, day);
       });
 
