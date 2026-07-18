@@ -333,7 +333,7 @@
   }
   .overlay.open{opacity:1;pointer-events:auto;}
   .detail{
-    position:fixed;top:0;right:0;height:100%;width:360px;max-width:90vw;background:var(--surface-2);
+    position:fixed;top:0;right:0;height:100%;width:580px;max-width:92vw;background:var(--surface-2);
     border-left:1px solid var(--line);box-shadow:-8px 0 30px -12px rgba(0,0,0,.3);
     transform:translateX(100%);transition:transform .2s ease;z-index:11;padding:20px;overflow-y:auto;
   }
@@ -494,7 +494,7 @@
   .prod-box .eta .delta.warn{background:var(--warn-bg);color:var(--warn);}
   .prod-box .eta .delta.crit{background:var(--crit-bg);color:var(--crit);}
   .prod-chart-wrap{overflow-x:auto;margin-bottom:12px;padding:8px 10px 4px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;}
-  .daily-table-wrap{max-height:220px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line-soft);border-radius:7px;margin-bottom:4px;}
+  .daily-table-wrap{max-height:320px;overflow-y:auto;overflow-x:auto;border:1px solid var(--line-soft);border-radius:7px;margin-bottom:4px;}
   table.daily-table{width:100%;border-collapse:collapse;font-size:12px;}
   table.daily-table th{
     position:sticky;top:0;text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
@@ -648,17 +648,12 @@
     <div><h2>총수량 (EA)</h2><input class="edit-input" type="number" min="1" id="d-qty" /></div>
   </div>
   <h2>품목</h2><input class="edit-input" id="d-item" />
+  <h2>배정 라인</h2><select class="edit-input" id="d-line"></select>
   <div class="row">
-    <div><h2>배정 라인</h2><select class="edit-input" id="d-line"></select></div>
-    <div><h2>상태</h2>
-      <select class="edit-input" id="d-risk">
-        <option value="ok">정상</option>
-        <option value="warn">주의</option>
-        <option value="crit">위험</option>
-      </select>
-    </div>
+    <div><h2>시작일</h2><input class="edit-input" type="date" id="d-start-date" /></div>
+    <div><h2>완료예정일</h2><input class="edit-input" type="date" id="d-end-date" /></div>
   </div>
-  <h2>소요일수 (일)</h2><input class="edit-input" type="number" min="1" max="31" id="d-span" />
+  <h2>소요일수 (일)</h2><input class="edit-input" type="number" min="1" id="d-span" />
   <h2>출고예정일</h2><input class="edit-input" type="date" id="d-ship" />
   <h2>메모</h2><input class="edit-input" id="d-status" />
   <div class="detail-actions">
@@ -752,7 +747,10 @@
     while(left > 0){ d++; if(!isSunday(d)) left--; }
     return d;
   }
-  function fmtDay(day){ return `7/${day}`; }
+  // NOTE: fmtDay/dayNumToISO rely on dayNumToDate, defined below once viewDays exists.
+  // Safe: nothing calls them until user interaction, well after that point in the script.
+  function fmtDay(day){ const d = dayNumToDate(day); return `${d.month}/${d.day}`; }
+  function dayNumToISO(day){ const d = dayNumToDate(day); return `${d.year}-${String(d.month).padStart(2,'0')}-${String(d.day).padStart(2,'0')}`; }
   function isoToShip(iso){ const [y,m,d] = iso.split('-'); return `${parseInt(m,10)}/${parseInt(d,10)}`; }
 
   // ---------- ramp-up curve: a new run doesn't hit full speed on day 1 ----------
@@ -801,6 +799,21 @@
     return days;
   })();
   const todayIndex = viewDays.findIndex(d => d.year === __now.getFullYear() && d.month === __now.getMonth() + 1 && d.day === __now.getDate());
+
+  // dayNum (the "start"/"span" unit used throughout) is 1-based and equals its
+  // viewDays index + 1 -- dayNum 1 = July 1, 2026 (the fixed epoch).
+  function dayNumToDate(dayNum){
+    const idx = Math.max(0, Math.min(viewDays.length - 1, dayNum - 1));
+    return viewDays[idx];
+  }
+  function dateToDayNum(y, m, d){
+    const idx = viewDays.findIndex(v => v.year === y && v.month === m && v.day === d);
+    return idx >= 0 ? idx + 1 : null;
+  }
+  function isoToDayNum(iso){
+    const [y, m, d] = iso.split('-').map(Number);
+    return dateToDayNum(y, m, d);
+  }
 
   const boardGrid = document.getElementById('boardGrid');
   const boardWrap = document.getElementById('boardWrap');
@@ -855,8 +868,21 @@
   }
   updateMonthLabel();
   boardWrap.addEventListener('scroll', updateMonthLabel, { passive: true });
-  document.getElementById('monthPrev').addEventListener('click', () => boardWrap.scrollBy({ left: -30 * DAY_W, behavior: 'smooth' }));
-  document.getElementById('monthNext').addEventListener('click', () => boardWrap.scrollBy({ left: 30 * DAY_W, behavior: 'smooth' }));
+  // jumps to the exact 1st of the next/prev month (relative to whichever month is
+  // currently shown in the label), so day 1 always lands right at the left edge
+  function scrollToAdjacentMonth(delta){
+    const currentIndex = Math.max(0, Math.min(viewDays.length - 1, Math.round(boardWrap.scrollLeft / DAY_W)));
+    const current = viewDays[currentIndex];
+    const target = addMonths(current.year, current.month, delta);
+    const targetIndex = viewDays.findIndex(d => d.year === target.year && d.month === target.month && d.day === 1);
+    if(targetIndex < 0){
+      showToast(delta > 0 ? '더 이상 표시할 달이 없습니다 (샘플 데이터는 10월까지)' : '더 이상 이전 달이 없습니다 (7월부터 시작)');
+      return;
+    }
+    boardWrap.scrollTo({ left: targetIndex * DAY_W, behavior: 'smooth' });
+  }
+  document.getElementById('monthPrev').addEventListener('click', () => scrollToAdjacentMonth(-1));
+  document.getElementById('monthNext').addEventListener('click', () => scrollToAdjacentMonth(1));
 
   // ---------- line/order data (start = day-of-month, span = days) ----------
   const lineDefs = [
@@ -1113,7 +1139,7 @@
   function snapMove(blk){
     let start = Math.round(parseFloat(blk.style.left) / DAY_W) + 1;
     const span = parseInt(blk.dataset.span, 10);
-    start = Math.max(1, Math.min(32 - span, start));
+    start = Math.max(1, Math.min(viewDays.length - span + 1, start));
     positionBlock(blk, start, span);
     blk.dataset.start = start;
     blk.dataset.line = blk.parentElement.dataset.line;
@@ -1125,7 +1151,7 @@
   function snapResize(blk){
     const start = parseInt(blk.dataset.start, 10);
     let span = Math.round((parseFloat(blk.style.width) + 6) / DAY_W);
-    span = Math.max(1, Math.min(32 - start, span));
+    span = Math.max(1, Math.min(viewDays.length - start + 1, span));
     positionBlock(blk, start, span);
     blk.dataset.span = span;
     delete productionState[blk.dataset.uid];
@@ -1194,9 +1220,11 @@
     let rampSum = 0;
     for(let i = 0; i < workdaysTotal; i++) rampSum += noRamp ? 1 : rampFraction(i);
     const steadyRate = Math.max(1, Math.round(total / rampSum));
-    const lineShort = (el.dataset.line || '').split(' · ')[0];
-    const team = teamData.find(t => t.line === lineShort);
-    const defaultHeadcount = team ? team.members : 8;
+    // real machine-operator headcounts run 50-60 per line, not the small team-roster
+    // count (that's supervisory staff); seeded historical days each get their own
+    // random draw in that range so the per-person column shows realistic variation
+    const randHeadcount = () => 50 + Math.floor(Math.random() * 11);
+    const defaultHeadcount = randHeadcount();
     const p = {
       total, steadyRate, start, plannedEnd, workdaysTotal, noRamp, defaultHeadcount,
       dailyLog: {}, headcountLog: {}, targetLog: {},
@@ -1209,7 +1237,7 @@
         const t = liveTargetForDay(p, d);
         p.targetLog[d] = t;
         p.dailyLog[d] = t;
-        p.headcountLog[d] = defaultHeadcount;
+        p.headcountLog[d] = randHeadcount();
       }
     }
     productionState[uid] = p;
@@ -1241,7 +1269,7 @@
     const newPlannedEnd = addWorkdays(projectFrom, neededDays);
     if(newPlannedEnd <= p.plannedEnd) return false;
     p.plannedEnd = newPlannedEnd;
-    const newSpan = Math.min(31 - p.start + 1, newPlannedEnd - p.start + 1);
+    const newSpan = Math.min(viewDays.length - p.start + 1, newPlannedEnd - p.start + 1);
     el.dataset.span = newSpan;
     positionBlock(el, p.start, newSpan);
     refreshOverlapsForArea(el.parentElement);
@@ -1316,8 +1344,6 @@
     el.classList.remove('risk-ok', 'risk-warn', 'risk-crit');
     el.classList.add('risk-' + newRisk);
     el.dataset.risk = newRisk;
-    const riskSelect = document.getElementById('d-risk');
-    if(riskSelect) riskSelect.value = newRisk;
   }
 
   function perPersonText(p, day){
@@ -1406,6 +1432,29 @@
     lineSelect.appendChild(opt);
   });
 
+  // ---------- 시작일 / 완료예정일 / 소요일수 stay in sync as any one of them is edited ----------
+  const dStartInput = document.getElementById('d-start-date');
+  const dEndInput = document.getElementById('d-end-date');
+  const dSpanInput = document.getElementById('d-span');
+  dStartInput.addEventListener('input', () => {
+    const startNum = isoToDayNum(dStartInput.value);
+    if(startNum == null) return;
+    const span = Math.max(1, parseInt(dSpanInput.value, 10) || 1);
+    dEndInput.value = dayNumToISO(startNum + span - 1);
+  });
+  dEndInput.addEventListener('input', () => {
+    const startNum = isoToDayNum(dStartInput.value);
+    const endNum = isoToDayNum(dEndInput.value);
+    if(startNum == null || endNum == null || endNum < startNum) return;
+    dSpanInput.value = endNum - startNum + 1;
+  });
+  dSpanInput.addEventListener('input', () => {
+    const startNum = isoToDayNum(dStartInput.value);
+    const span = Math.max(1, parseInt(dSpanInput.value, 10) || 1);
+    if(startNum == null) return;
+    dEndInput.value = dayNumToISO(startNum + span - 1);
+  });
+
   function openDetail(el){
     currentEl = el;
     document.getElementById('d-po').value = el.dataset.po;
@@ -1413,7 +1462,8 @@
     document.getElementById('d-qty').value = el.dataset.qty;
     document.getElementById('d-item').value = el.dataset.item;
     document.getElementById('d-line').value = el.dataset.line;
-    document.getElementById('d-risk').value = el.dataset.risk;
+    document.getElementById('d-start-date').value = dayNumToISO(parseInt(el.dataset.start, 10));
+    document.getElementById('d-end-date').value = dayNumToISO(parseInt(el.dataset.start, 10) + parseInt(el.dataset.span, 10) - 1);
     document.getElementById('d-span').value = el.dataset.span;
     document.getElementById('d-ship').value = el.dataset.ship;
     document.getElementById('d-status').value = el.dataset.status;
@@ -1487,13 +1537,13 @@
     el.dataset.buyerClass = buyerClassFor(newBuyer);
     el.dataset.item = document.getElementById('d-item').value.trim() || el.dataset.item;
     el.dataset.qty = Math.max(1, parseInt(document.getElementById('d-qty').value, 10) || 1);
-    el.dataset.risk = document.getElementById('d-risk').value;
     el.dataset.ship = document.getElementById('d-ship').value || el.dataset.ship;
     el.dataset.status = document.getElementById('d-status').value.trim();
 
-    const start = parseInt(el.dataset.start, 10);
+    const start = isoToDayNum(document.getElementById('d-start-date').value) ?? parseInt(el.dataset.start, 10);
     let span = Math.max(1, parseInt(document.getElementById('d-span').value, 10) || 1);
-    span = Math.min(span, 32 - start);
+    span = Math.min(span, viewDays.length - start + 1);
+    el.dataset.start = start;
     el.dataset.span = span;
     positionBlock(el, start, span);
     unconfirmBlock(el);
@@ -1749,7 +1799,7 @@
     const area = lineAreaByName[targetLineName];
     if(!area) return null;
     const start = startDay || TODAY;
-    const span = Math.min(31 - start + 1, daysFor(item));
+    const span = Math.min(viewDays.length - start + 1, daysFor(item));
     const block = createBlock({
       start, span, buyerClass: buyerClassFor(item.buyer), buyer: item.buyer,
       item: item.item, po: item.po, qty: item.qtyNum, ship: item.due, risk: item.badge,
@@ -2250,7 +2300,7 @@
     const start = parseInt(el.dataset.start, 10);
     const currentSpan = parseInt(el.dataset.span, 10);
     const extraDays = Math.max(1, Math.ceil(remaining / p.steadyRate));
-    const maxSpan = 31 - start + 1;
+    const maxSpan = viewDays.length - start + 1;
     const newSpan = Math.min(maxSpan, currentSpan + extraDays);
     const capped = newSpan < currentSpan + extraDays;
     positionBlock(el, start, newSpan);
