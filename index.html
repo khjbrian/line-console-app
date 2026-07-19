@@ -220,16 +220,16 @@
 
   .blk{
     position:absolute;top:4px;bottom:4px;border-radius:6px;padding:4px 8px 4px 6px;color:#fff;cursor:grab;
-    display:flex;flex-direction:column;gap:0px;overflow:hidden;border-left:3px solid transparent;
+    display:flex;flex-direction:column;gap:1px;border-left:3px solid transparent;
     box-shadow:0 1px 2px rgba(0,0,0,.15);transition:filter .1s ease, box-shadow .1s ease;user-select:none;touch-action:none;
     z-index:1;
   }
   .blk:hover{filter:brightness(1.08);}
   .blk.dragging{cursor:grabbing;filter:brightness(1.12);box-shadow:0 6px 18px -4px rgba(0,0,0,.4);z-index:5;}
-  .blk .buyer{font-family:var(--mono);font-size:8px;line-height:1.25;letter-spacing:.04em;opacity:.85;text-transform:uppercase;}
-  .blk .item{font-weight:700;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .blk .meta{font-size:8.5px;line-height:1.25;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .blk .ship{font-size:8px;line-height:1.25;opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .buyer{font-family:var(--mono);font-size:9px;line-height:1.3;letter-spacing:.04em;opacity:.85;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .item{font-weight:700;font-size:11.5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .meta{font-size:9.5px;line-height:1.3;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .ship{font-size:9px;line-height:1.3;opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .blk.risk-ok{border-left-color:#ffffffb0;}
   .blk.risk-warn{border-left-color:var(--warn);}
   .blk.risk-crit{border-left-color:var(--crit);}
@@ -332,11 +332,15 @@
   .team-card svg{overflow:visible;}
   .team-card.idle{border-style:dashed;}
   .team-card.idle .head .line{color:var(--ink-faint);}
-  .ld-stats{display:flex;gap:10px;margin-bottom:14px;}
-  .ld-stats > div{flex:1;text-align:center;background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;padding:10px 6px;}
-  .ld-num{font-family:var(--mono);font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}
-  .ld-label{font-size:10.5px;color:var(--ink-faint);margin-top:2px;}
-  .ld-chart{margin-bottom:14px;}
+  .ld-order{
+    background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;
+    padding:12px 14px;margin-bottom:10px;cursor:pointer;
+  }
+  .ld-order:hover{border-color:var(--accent);}
+  .ld-order-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;}
+  .ld-order-head .rp{font-weight:700;font-size:13px;}
+  .ld-order-meta{font-size:11.5px;color:var(--ink-dim);line-height:1.6;margin-bottom:8px;}
+  .ld-order-chart{overflow-x:auto;}
 
   /* ---------- slide-over ---------- */
   .overlay{
@@ -803,6 +807,11 @@
     const key = Object.keys(map).find(k => (name || '').toUpperCase().includes(k));
     return key ? map[key] : 'b-mtrl';
   }
+  // declared here (well before renderBoard()/refreshBuyerLegend() run) -- referencing
+  // a later-declared const at that early call site would throw a TDZ ReferenceError
+  // and silently abort the rest of the script (this bit the app once already; don't
+  // repeat it -- keep any const a refresh-on-init function depends on declared early)
+  const BUYER_CLASS_LABEL = { 'b-mtrl':'MTRL', 'b-strauss':'STRAUSS', 'b-entire':'ENTIRE', 'b-ambitions':'AMBITIONS', 'b-vanguard':'VANGUARD' };
 
   // ---------- header row (day numbers, sticky) ----------
   // NOTE: all production math (isSunday/workdaysBetween/addWorkdays/TODAY above) stays
@@ -912,10 +921,32 @@
     } else if(!turningOn && existingLine){
       existingLine.remove();
     }
+
+    let pushedCount = 0;
+    if(turningOn){
+      // any order whose schedule spans this day just lost a working day -- push its
+      // end out by one workday so its daily rate doesn't silently have to rise to
+      // compensate. Only extends on add; removing a holiday never auto-shrinks.
+      document.querySelectorAll('.blk').forEach(blk => {
+        const start = parseInt(blk.dataset.start, 10);
+        const span = parseInt(blk.dataset.span, 10);
+        const end = start + span - 1;
+        if(dayNum < start || dayNum > end) return;
+        const newEnd = addWorkdays(end, 1);
+        const newSpan = Math.min(viewDays.length - start + 1, newEnd - start + 1);
+        if(newSpan <= span) return;
+        blk.dataset.span = newSpan;
+        positionBlock(blk, start, newSpan);
+        refreshOverlapsForArea(blk.parentElement);
+        pushedCount++;
+      });
+    }
+
     Object.keys(productionState).forEach(k => delete productionState[k]);
     document.querySelectorAll('.blk').forEach(renderBlockContent);
     if(currentEl) openDetail(currentEl);
-    showToast(turningOn ? `${fmtDay(dayNum)}을 휴무일로 지정했습니다 · 생산량/소요일 계산에서 제외됩니다` : `${fmtDay(dayNum)} 휴무일 해제`);
+    const pushNote = pushedCount > 0 ? ` · 영향받는 오더 ${pushedCount}건 완료예정일 하루 밀림` : '';
+    showToast(turningOn ? `${fmtDay(dayNum)}을 휴무일로 지정했습니다 · 생산량/소요일 계산에서 제외됩니다${pushNote}` : `${fmtDay(dayNum)} 휴무일 해제`);
   }
 
   // month label reflects whatever month is currently scrolled to the left edge
@@ -1227,7 +1258,6 @@
   // ---------- buyer + urgency legend filters (combined) ----------
   // buyer filter chips reflect whichever buyers actually appear on the board right now
   // (not a fixed list) -- rebuilt after anything that can add/rename/remove an order
-  const BUYER_CLASS_LABEL = { 'b-mtrl':'MTRL', 'b-strauss':'STRAUSS', 'b-entire':'ENTIRE', 'b-ambitions':'AMBITIONS', 'b-vanguard':'VANGUARD' };
   function refreshBuyerLegend(){
     const legend = document.getElementById('buyerLegend');
     const wasActive = new Set([...legend.querySelectorAll('.chip.active')].map(c => c.dataset.buyer));
@@ -2302,40 +2332,44 @@
   lineDetailOverlay.addEventListener('click', closeLineDetail);
   document.getElementById('lineDetailClose').addEventListener('click', closeLineDetail);
 
+  // shows each order's own production history (date range + actual/planned rate +
+  // its own chart) instead of one number averaged across unrelated styles -- a single
+  // combined average/utilization doesn't mean much when each PO runs at a different pace
   function openLineDetail(t){
     const areaName = Object.keys(lineAreaByName).find(n => n.startsWith(t.line + ' ·'));
     const area = areaName ? lineAreaByName[areaName] : null;
     const orders = area ? [...area.querySelectorAll('.blk')].sort((a, b) => parseInt(a.dataset.start, 10) - parseInt(b.dataset.start, 10)) : [];
-    const assignedDays = orders.reduce((sum, b) => sum + parseInt(b.dataset.span, 10), 0);
-    const utilizationPct = Math.min(100, Math.round((assignedDays / viewDays.length) * 100));
     const riskLabel = { ok: '정상', warn: '주의', crit: '위험' };
 
-    document.getElementById('lineDetailTitle').textContent = `${t.line}${t.idle ? ' · 유휴' : ''}`;
-    document.getElementById('lineDetailBody').innerHTML = `
-      <div class="ld-stats">
-        <div><div class="ld-num">${t.avg.toLocaleString()}</div><div class="ld-label">pcs/일 평균</div></div>
-        <div><div class="ld-num">${orders.length}</div><div class="ld-label">배정 오더</div></div>
-        <div><div class="ld-num">${utilizationPct}%</div><div class="ld-label">가동률 (표시기간 기준)</div></div>
-      </div>
-      <div class="ld-chart">${sparkline(t.trend)}</div>
-      <h2>배정 오더</h2>
-      ${orders.length === 0 ? `<div class="risk-empty">배정된 오더가 없습니다</div>` : orders.map(b => {
+    document.getElementById('lineDetailTitle').textContent = `${t.line}${t.idle ? ' · 유휴' : ''} · 생산 이력`;
+    document.getElementById('lineDetailBody').innerHTML = orders.length === 0
+      ? `<div class="risk-empty">배정된 오더가 없습니다</div>`
+      : orders.map(b => {
+        const p = getProd(b);
+        const { cumulativeActual, remaining, progressPct } = projectCompletion(p);
         const start = parseInt(b.dataset.start, 10), span = parseInt(b.dataset.span, 10);
+        const end = start + span - 1;
+        const daysReported = Object.keys(p.dailyLog).length;
+        const actualAvg = daysReported > 0 ? Math.round(cumulativeActual / daysReported) : null;
         return `
-        <div class="risk-item" data-uid="${b.dataset.uid}">
-          <div class="risk-info">
+        <div class="ld-order" data-uid="${b.dataset.uid}">
+          <div class="ld-order-head">
             <div class="rp">${b.dataset.po} · ${b.dataset.item}</div>
-            <div class="rd">${fmtDay(start)}~${fmtDay(start + span - 1)} · ${Number(b.dataset.qty).toLocaleString()}pcs · ${b.dataset.confirmed === 'true' ? '확정' : '확정 대기'}</div>
+            <span class="badge ${b.dataset.risk}">${riskLabel[b.dataset.risk] || b.dataset.risk}</span>
           </div>
-          <span class="badge ${b.dataset.risk}">${riskLabel[b.dataset.risk] || b.dataset.risk}</span>
+          <div class="ld-order-meta">
+            ${fmtDay(start)}~${fmtDay(end)} 생산 (${span}일) · ${b.dataset.confirmed === 'true' ? '확정' : '확정 대기'}<br>
+            ${actualAvg != null ? `실적평균 <b>${actualAvg.toLocaleString()}pcs/일</b>` : '실적 없음'} · 계획목표 ${p.steadyRate.toLocaleString()}pcs/일 ·
+            누적 ${cumulativeActual.toLocaleString()} / 잔여 ${remaining.toLocaleString()}pcs (${progressPct}%)
+          </div>
+          <div class="ld-order-chart">${renderDailyChartSVG(p)}</div>
         </div>`;
-      }).join('')}
-    `;
+      }).join('');
     lineDetailOverlay.classList.add('open');
     lineDetailModalEl.classList.add('open');
   }
   document.getElementById('lineDetailBody').addEventListener('click', (e) => {
-    const row = e.target.closest('.risk-item');
+    const row = e.target.closest('.ld-order');
     if(!row) return;
     const blk = document.querySelector(`.blk[data-uid="${row.dataset.uid}"]`);
     closeLineDetail();
