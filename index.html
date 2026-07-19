@@ -229,7 +229,7 @@
   .blk .buyer{font-family:var(--mono);font-size:8px;line-height:1.25;letter-spacing:.04em;opacity:.85;text-transform:uppercase;}
   .blk .item{font-weight:700;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .blk .meta{font-size:8.5px;line-height:1.25;font-variant-numeric:tabular-nums;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .blk .ship{font-size:8px;line-height:1.25;margin-top:auto;opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .blk .ship{font-size:8px;line-height:1.25;opacity:.85;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .blk.risk-ok{border-left-color:#ffffffb0;}
   .blk.risk-warn{border-left-color:var(--warn);}
   .blk.risk-crit{border-left-color:var(--crit);}
@@ -590,12 +590,7 @@
       </div>
       <span class="sep"></span>
       <span class="label">바이어 필터</span>
-      <div class="group" id="buyerLegend">
-        <span class="chip" data-buyer="mtrl"><i class="dot" style="background:var(--b-mtrl)"></i>MTRL</span>
-        <span class="chip" data-buyer="strauss"><i class="dot" style="background:var(--b-strauss)"></i>STRAUSS</span>
-        <span class="chip" data-buyer="entire"><i class="dot" style="background:var(--b-entire)"></i>ENTIRE</span>
-        <span class="chip" data-buyer="ambitions"><i class="dot" style="background:var(--b-ambitions)"></i>AMBITIONS</span>
-      </div>
+      <div class="group" id="buyerLegend"></div>
       <span class="sep"></span>
       <span class="label">긴급도</span>
       <div class="group" id="riskLegend">
@@ -1132,6 +1127,7 @@
     boardGrid.style.gridTemplateRows = `44px repeat(${lineDefs.length}, 72px)`;
   }
   renderBoard();
+  refreshBuyerLegend();
 
   // ---------- drag to move / drag right edge to resize ----------
   // Note: the block is never reparented to a new row mid-drag (only once, on drop) --
@@ -1229,6 +1225,19 @@
   }
 
   // ---------- buyer + urgency legend filters (combined) ----------
+  // buyer filter chips reflect whichever buyers actually appear on the board right now
+  // (not a fixed list) -- rebuilt after anything that can add/rename/remove an order
+  const BUYER_CLASS_LABEL = { 'b-mtrl':'MTRL', 'b-strauss':'STRAUSS', 'b-entire':'ENTIRE', 'b-ambitions':'AMBITIONS', 'b-vanguard':'VANGUARD' };
+  function refreshBuyerLegend(){
+    const legend = document.getElementById('buyerLegend');
+    const wasActive = new Set([...legend.querySelectorAll('.chip.active')].map(c => c.dataset.buyer));
+    const present = new Set([...document.querySelectorAll('.blk')].map(b => b.dataset.buyerClass));
+    legend.innerHTML = Object.keys(BUYER_CLASS_LABEL).filter(cls => present.has(cls)).map(cls => {
+      const key = cls.replace('b-', '');
+      return `<span class="chip${wasActive.has(key) ? ' active' : ''}" data-buyer="${key}"><i class="dot" style="background:var(--${cls})"></i>${BUYER_CLASS_LABEL[cls]}</span>`;
+    }).join('');
+  }
+
   function applyLegendFilters(){
     const activeBuyers = [...document.querySelectorAll('#buyerLegend .chip.active')].map(c => c.dataset.buyer);
     const activeRisks = [...document.querySelectorAll('#riskLegend .chip.active')].map(c => c.dataset.risk);
@@ -1671,6 +1680,7 @@
     delete productionState[el.dataset.uid];
     renderProdBox(el);
     renderConfirmBox(getProd(el), el);
+    refreshBuyerLegend();
     showToast(`${el.dataset.po} 저장 완료 · 재확정이 필요합니다`);
     checkShipRisk();
   });
@@ -1922,6 +1932,7 @@
     if(idleEl) idleEl.remove();
     area.appendChild(block);
     refreshOverlapsForArea(area);
+    refreshBuyerLegend();
     const end = start + span - 1;
     const dueDay = parseInt(item.due.slice(8, 10), 10);
     const buffer = dueDay - end;
@@ -1976,6 +1987,7 @@
       el.remove();
     }
     refreshOverlapsForArea(area);
+    refreshBuyerLegend();
     closeDetail();
     showToast(`${el.dataset.po} 생산 중단 · 실적 ${cumulativeActual.toLocaleString()}pcs는 보드에 남기고 잔여 ${remaining.toLocaleString()}pcs는 미배정 큐로 이동`);
   }
@@ -2027,6 +2039,7 @@
     queueData.length = 0;
     snap.queueData.forEach(q => queueData.push(q));
     renderQueue();
+    refreshBuyerLegend();
     closeDetail();
   }
   function undo(){
