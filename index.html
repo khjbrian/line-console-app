@@ -906,6 +906,51 @@
   // every production quantity/duration calculation (see isNonWorkday). Since that
   // changes the workday math for every order at once, cached production state gets
   // wiped and every block + the open detail panel (if any) is refreshed.
+  // records exactly which holiday pushed a block's end out, so cancelling that
+  // specific holiday later can pull it back in by precisely the same amount --
+  // never a recompute-from-scratch that could drift from what actually happened
+  function holidayPushesOf(blk){
+    try { return JSON.parse(blk.dataset.holidayPushes || '[]'); } catch(e) { return []; }
+  }
+  function pushBlockForHoliday(blk, dayNum){
+    const start = parseInt(blk.dataset.start, 10);
+    const span = parseInt(blk.dataset.span, 10);
+    const end = start + span - 1;
+    if(dayNum < start || dayNum > end) return false;
+    const newEnd = addWorkdays(end, 1);
+    const newSpan = Math.min(viewDays.length - start + 1, newEnd - start + 1);
+    if(newSpan <= span) return false;
+    blk.dataset.span = newSpan;
+    positionBlock(blk, start, newSpan);
+    refreshOverlapsForArea(blk.parentElement);
+    const pushes = holidayPushesOf(blk);
+    pushes.push(dayNum);
+    blk.dataset.holidayPushes = JSON.stringify(pushes);
+    return true;
+  }
+  function pullBlockForHoliday(blk, dayNum){
+    const pushes = holidayPushesOf(blk);
+    const idx = pushes.indexOf(dayNum);
+    if(idx === -1) return false; // this block was never pushed out by this holiday
+    const start = parseInt(blk.dataset.start, 10);
+    const span = parseInt(blk.dataset.span, 10);
+    const end = start + span - 1;
+    let newEnd = end - 1;
+    while(newEnd > start && isNonWorkday(newEnd)) newEnd--;
+    if(newEnd < start) return false;
+    // never pull back into a day that already has a real actual entry logged
+    const p = productionState[blk.dataset.uid];
+    const loggedDays = p ? Object.keys(p.dailyLog).map(Number) : [];
+    const lastLogged = loggedDays.length ? Math.max(...loggedDays) : start - 1;
+    if(newEnd < lastLogged) return false;
+    const newSpan = newEnd - start + 1;
+    blk.dataset.span = newSpan;
+    positionBlock(blk, start, newSpan);
+    refreshOverlapsForArea(blk.parentElement);
+    pushes.splice(idx, 1);
+    blk.dataset.holidayPushes = JSON.stringify(pushes);
+    return true;
+  }
   function toggleHoliday(dayNum, headEl){
     const turningOn = !holidaySet.has(dayNum);
     if(turningOn) holidaySet.add(dayNum); else holidaySet.delete(dayNum);
@@ -922,31 +967,17 @@
       existingLine.remove();
     }
 
-    let pushedCount = 0;
-    if(turningOn){
-      // any order whose schedule spans this day just lost a working day -- push its
-      // end out by one workday so its daily rate doesn't silently have to rise to
-      // compensate. Only extends on add; removing a holiday never auto-shrinks.
-      document.querySelectorAll('.blk').forEach(blk => {
-        const start = parseInt(blk.dataset.start, 10);
-        const span = parseInt(blk.dataset.span, 10);
-        const end = start + span - 1;
-        if(dayNum < start || dayNum > end) return;
-        const newEnd = addWorkdays(end, 1);
-        const newSpan = Math.min(viewDays.length - start + 1, newEnd - start + 1);
-        if(newSpan <= span) return;
-        blk.dataset.span = newSpan;
-        positionBlock(blk, start, newSpan);
-        refreshOverlapsForArea(blk.parentElement);
-        pushedCount++;
-      });
-    }
+    let affected = 0;
+    document.querySelectorAll('.blk').forEach(blk => {
+      const ok = turningOn ? pushBlockForHoliday(blk, dayNum) : pullBlockForHoliday(blk, dayNum);
+      if(ok) affected++;
+    });
 
     Object.keys(productionState).forEach(k => delete productionState[k]);
     document.querySelectorAll('.blk').forEach(renderBlockContent);
     if(currentEl) openDetail(currentEl);
-    const pushNote = pushedCount > 0 ? ` · 영향받는 오더 ${pushedCount}건 완료예정일 하루 밀림` : '';
-    showToast(turningOn ? `${fmtDay(dayNum)}을 휴무일로 지정했습니다 · 생산량/소요일 계산에서 제외됩니다${pushNote}` : `${fmtDay(dayNum)} 휴무일 해제`);
+    const note = affected > 0 ? ` · 영향받는 오더 ${affected}건 완료예정일 ${turningOn ? '하루 밀림' : '하루 당겨짐'}` : '';
+    showToast(turningOn ? `${fmtDay(dayNum)}을 휴무일로 지정했습니다 · 생산량/소요일 계산에서 제외됩니다${note}` : `${fmtDay(dayNum)} 휴무일 해제${note}`);
   }
 
   // month label reflects whatever month is currently scrolled to the left edge
@@ -2030,6 +2061,7 @@
       buyerClass: b.dataset.buyerClass, item: b.dataset.item, qty: b.dataset.qty, ship: b.dataset.ship,
       status: b.dataset.status, risk: b.dataset.risk, start: b.dataset.start, span: b.dataset.span,
       noRamp: b.dataset.noRamp === 'true', confirmed: b.dataset.confirmed === 'true', lockMode: b.dataset.lockMode || '',
+      holidayPushes: holidayPushesOf(b),
     }));
     const idleLines = Object.keys(lineAreaByName).filter(name => lineAreaByName[name].querySelector('.idle-slot'));
     return {
@@ -2057,6 +2089,7 @@
         item: o.item, po: o.po, qty: parseInt(o.qty, 10), ship: o.ship, risk: o.risk, status: o.status,
         noRamp: o.noRamp, confirmed: o.confirmed, lockMode: o.lockMode,
       }, o.line, o.uid);
+      block.dataset.holidayPushes = JSON.stringify(o.holidayPushes || []);
       area.appendChild(block);
     });
     snap.idleLines.forEach(name => {
