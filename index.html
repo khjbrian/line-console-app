@@ -307,6 +307,7 @@
   .badge.ok{background:var(--ok-bg);color:var(--ok);}
   .badge.warn{background:var(--warn-bg);color:var(--warn);}
   .badge.crit{background:var(--crit-bg);color:var(--crit);}
+  .badge.muted{background:var(--line-soft);color:var(--ink-dim);}
   .rec{font-size:12px;color:var(--ink-dim);}
   .rec b{color:var(--ink);}
   .rec .caution{display:block;color:var(--warn);font-size:11px;margin-top:1px;}
@@ -315,6 +316,11 @@
     border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;
   }
   .assign-btn:hover{background:var(--accent);color:var(--accent-ink);}
+  .detail-btn{
+    font-family:var(--sans);font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:6px;
+    border:1px solid var(--line);background:transparent;color:var(--ink-dim);cursor:pointer;
+  }
+  .detail-btn:hover{background:var(--line-soft);color:var(--ink);}
 
   /* ---------- team cards ---------- */
   .team-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(200px,1fr));gap:12px;}
@@ -332,15 +338,18 @@
   .team-card svg{overflow:visible;}
   .team-card.idle{border-style:dashed;}
   .team-card.idle .head .line{color:var(--ink-faint);}
-  .ld-order{
-    background:var(--surface);border:1px solid var(--line-soft);border-radius:8px;
-    padding:12px 14px;margin-bottom:10px;cursor:pointer;
+  #lineDetailModal{width:820px;}
+  .ld-table-wrap{overflow-x:auto;}
+  table.ld-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.ld-table th{
+    text-align:left;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;
+    color:var(--ink-faint);padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
   }
-  .ld-order:hover{border-color:var(--accent);}
-  .ld-order-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;}
-  .ld-order-head .rp{font-weight:700;font-size:13px;}
-  .ld-order-meta{font-size:11.5px;color:var(--ink-dim);line-height:1.6;margin-bottom:8px;}
-  .ld-order-chart{overflow-x:auto;}
+  table.ld-table td{padding:9px 10px;border-bottom:1px solid var(--line-soft);vertical-align:middle;white-space:nowrap;}
+  table.ld-table tr{cursor:pointer;}
+  table.ld-table tr:hover td{background:var(--line-soft);}
+  table.ld-table .prog-mini{display:flex;align-items:center;gap:6px;}
+  table.ld-table .prog-mini .prog-track{width:56px;height:5px;margin:0;flex:none;}
 
   /* ---------- slide-over ---------- */
   .overlay{
@@ -493,6 +502,9 @@
   .reg-form .estimate .sub{color:var(--ink-faint);font-size:10.5px;}
   .reg-form .estimate .sub.buffer-warn{color:var(--crit);font-weight:700;}
 
+  .rate-warn{display:none;color:var(--crit);font-weight:700;font-size:11px;margin:-6px 0 10px;}
+  .rate-warn.show{display:block;}
+
   /* ---------- production tracking (detail panel) ---------- */
   .prod-box{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-top:6px;background:var(--surface);}
   .prod-box .plan-line{font-size:12px;color:var(--ink-dim);margin-bottom:8px;font-variant-numeric:tabular-nums;}
@@ -581,7 +593,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="board">스케줄 보드</button>
-    <button class="tab" data-tab="queue">미배정 오더 <span class="count" id="queueCount">(5)</span></button>
+    <button class="tab" data-tab="queue">오더 리스트 <span class="count" id="queueCount">(5)</span></button>
     <button class="tab" data-tab="teams">조 편성 현황</button>
   </div>
 
@@ -633,11 +645,19 @@
       </div>
       <button class="btn primary" id="regSubmit">오더 직접 등록</button>
     </div>
+    <div class="legend" style="margin-top:16px;">
+      <span class="label">배정 상태</span>
+      <div class="group" id="orderStatusFilter">
+        <span class="chip active" data-filter="all">전체</span>
+        <span class="chip" data-filter="unassigned">미배정</span>
+        <span class="chip" data-filter="assigned">배정됨</span>
+      </div>
+    </div>
     <div class="queue-wrap">
       <table class="queue">
         <thead>
           <tr>
-            <th>긴급도</th><th>PO</th><th>바이어</th><th>품목</th><th>수량</th><th>일일생산량 (소요일수)</th><th>납기일</th><th>추천 라인</th><th></th>
+            <th>상태</th><th>긴급도</th><th>PO</th><th>바이어</th><th>품목</th><th>수량</th><th>일일생산량 (소요일수)</th><th>라인</th><th>납기일</th><th></th>
           </tr>
         </thead>
         <tbody id="queueBody"></tbody>
@@ -667,6 +687,8 @@
     <div><h2>시작일</h2><input class="edit-input" type="date" id="d-start-date" /></div>
     <div><h2>완료예정일</h2><input class="edit-input" type="date" id="d-end-date" /></div>
   </div>
+  <h2>일일 목표 생산량 (pcs/일)</h2><input class="edit-input" type="number" min="1" id="d-rate" />
+  <div class="rate-warn" id="d-rate-warn"></div>
   <h2>소요일수 (일)</h2><input class="edit-input" type="number" min="1" id="d-span" />
   <h2>출고예정일</h2><input class="edit-input" type="date" id="d-ship" />
   <h2>메모</h2><input class="edit-input" id="d-status" />
@@ -801,6 +823,18 @@
       days++;
     }
     return Math.max(1, days);
+  }
+  // pcs producible at `rate` pcs/day (steady-state) across `workdaysTotal` workdays,
+  // accounting for the ramp-up curve on the first few days
+  function achievableQty(rate, workdaysTotal, noRamp){
+    let sum = 0;
+    for(let i = 0; i < workdaysTotal; i++) sum += rate * (noRamp ? 1 : rampFraction(i));
+    return Math.round(sum);
+  }
+  // inverse of achievableQty: the steady-state rate needed to hit `qty` over `workdaysTotal` workdays
+  function steadyRateFor(qty, workdaysTotal, noRamp){
+    const unitSum = achievableQty(1, workdaysTotal, noRamp);
+    return Math.max(1, Math.round(qty / Math.max(unitSum, 0.0001)));
   }
   function buyerClassFor(name){
     const map = { MTRL:'b-mtrl', STRAUSS:'b-strauss', ENTIRE:'b-entire', AMBITIONS:'b-ambitions', VANGUARD:'b-vanguard' };
@@ -1395,9 +1429,7 @@
     const workdaysTotal = Math.max(1, workdaysBetween(start, plannedEnd));
     const total = parseInt(el.dataset.qty, 10);
     const noRamp = el.dataset.noRamp === 'true';
-    let rampSum = 0;
-    for(let i = 0; i < workdaysTotal; i++) rampSum += noRamp ? 1 : rampFraction(i);
-    const steadyRate = Math.max(1, Math.round(total / rampSum));
+    const steadyRate = steadyRateFor(total, workdaysTotal, noRamp);
     // real machine-operator headcounts run 50-60 per line, not the small team-roster
     // count (that's supervisory staff); seeded historical days each get their own
     // random draw in that range so the per-person column shows realistic variation
@@ -1610,28 +1642,83 @@
     lineSelect.appendChild(opt);
   });
 
-  // ---------- 시작일 / 완료예정일 / 소요일수 stay in sync as any one of them is edited ----------
+  // ---------- 시작일 / 완료예정일 / 소요일수 / 일일 목표 생산량 stay in sync as any one is edited ----------
   const dStartInput = document.getElementById('d-start-date');
   const dEndInput = document.getElementById('d-end-date');
   const dSpanInput = document.getElementById('d-span');
+  const dRateInput = document.getElementById('d-rate');
+  const dQtyInput = document.getElementById('d-qty');
+  const dRateWarn = document.getElementById('d-rate-warn');
+
+  // completion-date / days-required / daily-rate can't all move independently --
+  // whichever one the user just touched wins, and the daily rate is always the one
+  // recomputed from qty + the (possibly new) span, except when the user edits the
+  // rate directly, in which case the span/end-date are recomputed from it instead.
+  function checkRateConsistency(){
+    const startNum = isoToDayNum(dStartInput.value);
+    const endNum = isoToDayNum(dEndInput.value);
+    const rate = Math.max(1, parseInt(dRateInput.value, 10) || 1);
+    const qty = Math.max(1, parseInt(dQtyInput.value, 10) || 1);
+    if(!currentEl || startNum == null || endNum == null || endNum < startNum){
+      dRateWarn.classList.remove('show');
+      return false;
+    }
+    const workdaysTotal = Math.max(1, workdaysBetween(startNum, endNum));
+    const achievable = achievableQty(rate, workdaysTotal, currentEl.dataset.noRamp === 'true');
+    const mismatch = Math.abs(achievable - qty) / qty > 0.05;
+    dRateWarn.classList.toggle('show', mismatch);
+    dRateWarn.textContent = mismatch
+      ? `⚠ 완료예정일·소요일수 기준으로는 약 ${achievable.toLocaleString()}pcs 생산 가능 (목표수량 ${qty.toLocaleString()}pcs와 불일치)`
+      : '';
+    return mismatch;
+  }
+  function updateRateFromSpan(){
+    if(!currentEl) return;
+    const startNum = isoToDayNum(dStartInput.value);
+    const endNum = isoToDayNum(dEndInput.value);
+    if(startNum == null || endNum == null || endNum < startNum) return;
+    const workdaysTotal = Math.max(1, workdaysBetween(startNum, endNum));
+    const qty = Math.max(1, parseInt(dQtyInput.value, 10) || 1);
+    dRateInput.value = steadyRateFor(qty, workdaysTotal, currentEl.dataset.noRamp === 'true');
+    checkRateConsistency();
+  }
+  function updateSpanFromRate(){
+    if(!currentEl) return;
+    const startNum = isoToDayNum(dStartInput.value);
+    if(startNum == null) return;
+    const rate = Math.max(1, parseInt(dRateInput.value, 10) || 1);
+    const qty = Math.max(1, parseInt(dQtyInput.value, 10) || 1);
+    const workdaysNeeded = daysForRamped(qty, rate);
+    const wantedSpan = calendarSpanFor(startNum, workdaysNeeded);
+    const maxSpan = viewDays.length - startNum + 1;
+    const span = Math.max(1, Math.min(wantedSpan, maxSpan));
+    dSpanInput.value = span;
+    dEndInput.value = dayNumToISO(startNum + span - 1);
+    if(checkRateConsistency()) showToast('⚠ 해당 일일 목표 생산량으로는 보드 범위 내에 목표 수량을 완료할 수 없습니다');
+  }
   dStartInput.addEventListener('input', () => {
     const startNum = isoToDayNum(dStartInput.value);
     if(startNum == null) return;
     const span = Math.max(1, parseInt(dSpanInput.value, 10) || 1);
     dEndInput.value = dayNumToISO(startNum + span - 1);
+    updateRateFromSpan();
   });
   dEndInput.addEventListener('input', () => {
     const startNum = isoToDayNum(dStartInput.value);
     const endNum = isoToDayNum(dEndInput.value);
     if(startNum == null || endNum == null || endNum < startNum) return;
     dSpanInput.value = endNum - startNum + 1;
+    updateRateFromSpan();
   });
   dSpanInput.addEventListener('input', () => {
     const startNum = isoToDayNum(dStartInput.value);
     const span = Math.max(1, parseInt(dSpanInput.value, 10) || 1);
     if(startNum == null) return;
     dEndInput.value = dayNumToISO(startNum + span - 1);
+    updateRateFromSpan();
   });
+  dQtyInput.addEventListener('input', updateRateFromSpan);
+  dRateInput.addEventListener('input', updateSpanFromRate);
 
   function openDetail(el){
     currentEl = el;
@@ -1645,8 +1732,11 @@
     document.getElementById('d-span').value = el.dataset.span;
     document.getElementById('d-ship').value = el.dataset.ship;
     document.getElementById('d-status').value = el.dataset.status;
+    const p = getProd(el);
+    document.getElementById('d-rate').value = p.steadyRate;
+    dRateWarn.classList.remove('show');
     renderProdBox(el);
-    renderConfirmBox(getProd(el), el);
+    renderConfirmBox(p, el);
     overlay.classList.add('open');
     detail.classList.add('open');
   }
@@ -1673,6 +1763,7 @@
         el.dataset.lockMode = '';
         renderBlockContent(el);
         renderConfirmBox(p, el);
+        renderQueue();
         showToast(`${el.dataset.po} 확정 해제됨`);
       });
     } else {
@@ -1697,6 +1788,7 @@
     renderBlockContent(el);
     renderConfirmBox(p, el);
     refreshLiveTargetCells(p);
+    renderQueue();
     showToast(`${el.dataset.po} 확정 완료 · ${mode === 'date' ? '완료일자' : '목표생산량'} 고정`);
   }
   function closeDetail(){ overlay.classList.remove('open'); detail.classList.remove('open'); currentEl = null; }
@@ -1742,6 +1834,7 @@
     renderProdBox(el);
     renderConfirmBox(getProd(el), el);
     refreshBuyerLegend();
+    renderQueue();
     showToast(`${el.dataset.po} 저장 완료 · 재확정이 필요합니다`);
     checkShipRisk();
   });
@@ -1753,6 +1846,7 @@
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      if(tab.dataset.tab === 'queue') renderQueue();
     });
   });
 
@@ -1773,11 +1867,42 @@
     return calendarSpanFor(startDay || TODAY, workdays);
   }
   const queueBody = document.getElementById('queueBody');
+  // '전체' / '미배정' / '배정됨' -- which rows show in the merged 오더 리스트 table
+  let orderListFilter = 'all';
+  function ddayLabel(dueISO){
+    const day = parseInt(dueISO.slice(8, 10), 10);
+    const dday = day - TODAY;
+    return dday >= 0 ? `D-${dday}` : `D+${Math.abs(dday)}`;
+  }
+  // 오더 리스트 shows every order, assigned or not -- unassigned rows come straight from
+  // queueData, assigned rows are read live off the board's .blk elements, so the list
+  // never needs a separate "master registry" to stay in sync with the board.
   function renderQueue(){
     queueBody.innerHTML = '';
-    queueData.forEach(q => {
-      const tr = document.createElement('tr');
-      tr.id = 'q-' + q.id;
+    const assignedBlocks = [...document.querySelectorAll('.blk')];
+    const rows = [];
+    if(orderListFilter !== 'assigned') queueData.forEach(q => rows.push({ assigned: false, q }));
+    if(orderListFilter !== 'unassigned') assignedBlocks.forEach(el => rows.push({ assigned: true, el }));
+    queueBody.innerHTML = rows.map(r => {
+      if(r.assigned){
+        const el = r.el;
+        const p = getProd(el);
+        const span = parseInt(el.dataset.span, 10);
+        const confirmed = el.dataset.confirmed === 'true';
+        return `<tr data-uid="${el.dataset.uid}">
+          <td><span class="badge ${confirmed ? 'ok' : 'warn'}">${confirmed ? '확정' : '확정대기'}</span></td>
+          <td><span class="badge ${el.dataset.risk}">${ddayLabel(el.dataset.ship)}</span></td>
+          <td style="font-family:var(--mono)">${el.dataset.po}</td>
+          <td>${el.dataset.buyer}</td>
+          <td>${el.dataset.item}</td>
+          <td class="qty">${parseInt(el.dataset.qty, 10).toLocaleString()} pcs</td>
+          <td class="qty">${p.steadyRate.toLocaleString()} pcs/일 (${span}일)</td>
+          <td class="rec"><b>${el.dataset.line}</b></td>
+          <td class="qty">${el.dataset.ship}</td>
+          <td><button class="detail-btn" data-uid="${el.dataset.uid}">상세보기</button></td>
+        </tr>`;
+      }
+      const q = r.q;
       const rateCell = q.dailyRate
         ? `${q.dailyRate.toLocaleString()} pcs/일 (${daysFor(q)}일)`
         : `<div class="rate-fill-cell">
@@ -1787,22 +1912,36 @@
       const assignBtn = q.dailyRate
         ? `<button class="assign-btn" data-id="${q.id}">배정</button>`
         : `<button class="assign-btn" data-id="${q.id}" disabled title="일일생산량을 먼저 입력하세요">배정</button>`;
-      tr.innerHTML = `
+      return `<tr id="q-${q.id}">
+        <td><span class="badge muted">미배정</span></td>
         <td><span class="badge ${q.badge}">${q.dday}</span></td>
         <td style="font-family:var(--mono)">${q.po}</td>
         <td>${q.buyer}</td>
         <td>${q.item}</td>
         <td class="qty">${q.qtyNum.toLocaleString()} pcs</td>
         <td class="qty">${rateCell}</td>
-        <td class="qty">${q.due}</td>
         <td class="rec"><b>${q.rec}</b>${q.caution ? `<span class="caution">${q.caution}</span>` : ''}</td>
+        <td class="qty">${q.due}</td>
         <td>${assignBtn}</td>
-      `;
-      queueBody.appendChild(tr);
-    });
-    document.getElementById('queueCount').textContent = `(${queueData.length})`;
+      </tr>`;
+    }).join('');
+    document.getElementById('queueCount').textContent = `(${queueData.length + assignedBlocks.length})`;
   }
   renderQueue();
+  document.getElementById('orderStatusFilter').addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if(!chip) return;
+    document.querySelectorAll('#orderStatusFilter .chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    orderListFilter = chip.dataset.filter;
+    renderQueue();
+  });
+  queueBody.addEventListener('click', (e) => {
+    const detailBtn = e.target.closest('.detail-btn');
+    if(!detailBtn) return;
+    const el = document.querySelector(`.blk[data-uid="${detailBtn.dataset.uid}"]`);
+    if(el) openDetail(el);
+  });
 
   // fill in a missing daily production rate directly from the queue row
   queueBody.addEventListener('change', (e) => {
@@ -1936,14 +2075,26 @@
     return key ? row[key] : undefined;
   }
 
+  // an order already in the queue or already placed on the board (by PO) doesn't get
+  // re-added -- re-importing the same export, or a file that overlaps a prior one,
+  // shouldn't duplicate orders
+  function existingPOs(){
+    const boardPOs = [...document.querySelectorAll('.blk')].map(b => b.dataset.po);
+    const queuePOs = queueData.map(q => q.po);
+    return new Set([...boardPOs, ...queuePOs].map(po => po.replace('#', '').trim().toUpperCase()));
+  }
   function importRowsToQueue(rows, filename){
-    let added = 0, missingRate = 0;
+    let added = 0, missingRate = 0, duplicate = 0;
+    const seen = existingPOs();
     rows.forEach((row, i) => {
       const buyer = (findField(row, FIELD_ALIASES.buyer) || '').toString().trim();
       const item = (findField(row, FIELD_ALIASES.item) || '').toString().trim();
       const qty = parseInt(String(findField(row, FIELD_ALIASES.qty) || '').replace(/[^0-9]/g, ''), 10);
       if(!buyer || !item || !qty) return; // skip rows missing the fields we can't reasonably default
       const po = (findField(row, FIELD_ALIASES.po) || `#IMP${Date.now().toString().slice(-5)}${i}`).toString().trim();
+      const poKey = po.replace('#', '').trim().toUpperCase();
+      if(seen.has(poKey)){ duplicate++; return; }
+      seen.add(poKey);
       const due = normalizeDate(findField(row, FIELD_ALIASES.due)) || '2026-08-15';
       const rateRaw = findField(row, FIELD_ALIASES.rate);
       const rate = rateRaw ? parseInt(String(rateRaw).replace(/[^0-9]/g, ''), 10) : null;
@@ -1960,7 +2111,7 @@
       added++;
     });
     renderQueue();
-    showToast(`${filename}에서 ${added}건 가져옴${missingRate > 0 ? ` · ${missingRate}건 일일생산량 입력 필요` : ''}`);
+    showToast(`${filename}에서 ${added}건 가져옴${missingRate > 0 ? ` · ${missingRate}건 일일생산량 입력 필요` : ''}${duplicate > 0 ? ` · 중복 ${duplicate}건 제외` : ''}`);
   }
 
   document.getElementById('importFile').addEventListener('change', async (e) => {
@@ -2209,6 +2360,21 @@
     return (skillMatch ? 0 : 1000) - team.avg;
   }
 
+  // best real-world default for an order's daily rate before production starts:
+  // the single best day this line has ever actually produced, across any past/current
+  // order's logged output. Falls back to the team's recent average if there's no history yet.
+  function lineHistoricalMaxDaily(lineShort){
+    let max = 0;
+    document.querySelectorAll('.blk').forEach(b => {
+      if(!b.dataset.line.startsWith(lineShort + ' ·')) return;
+      const p = getProd(b);
+      Object.values(p.dailyLog).forEach(v => { if(v > max) max = v; });
+    });
+    if(max > 0) return max;
+    const team = teamData.find(t => t.line === lineShort);
+    return team ? Math.max(1, Math.round(team.avg)) : null;
+  }
+
   // ---------- queue tab: pick which line to assign a given order to ----------
   const lineSelectOverlay = document.getElementById('lineSelectOverlay');
   const lineSelectModalEl = document.getElementById('lineSelectModal');
@@ -2302,14 +2468,33 @@
     else showToast(`${item.po} 배정 실패 · 대상 라인을 찾을 수 없습니다`);
   });
 
-  // ---------- auto-assign demo ----------
+  // ---------- auto-assign: bulk-places every 미배정 order onto its best-matched line.
+  // Only ever creates new placements from the queue -- existing board blocks (confirmed
+  // or 확정대기) are never touched, so confirmed orders can never move by definition. ----------
   document.getElementById('autoAssignBtn').addEventListener('click', () => {
-    if(!queueData.find(q => q.id === '33210')){ showToast('배정 대기 중인 긴급 오더가 없습니다'); return; }
+    if(queueData.length === 0){ showToast('배정 대기 중인 오더가 없습니다'); return; }
     pushUndo();
-    const item = removeFromQueue('33210');
-    if(!item){ showToast('배정 대기 중인 긴급 오더가 없습니다'); return; }
-    const placed = placeOrderOnBoard(item, '자동배정 · 유휴 라인 투입');
-    if(placed) showToast(`긴급 오더 1건(${item.po})을 ${placed.targetLineName}에 자동배정 · ${placed.span}일${bufferSuffix(placed)}`);
+    const ids = queueData.map(q => q.id);
+    let placedCount = 0, rateDefaulted = 0;
+    ids.forEach(id => {
+      const item = queueData.find(q => q.id === id);
+      if(!item) return;
+      const ranked = teamData.map(t => ({ t, score: matchScore(t.line, item) })).sort((a, b) => a.score - b.score);
+      const best = ranked[0];
+      if(!best) return;
+      if(!item.dailyRate){
+        const hist = lineHistoricalMaxDaily(best.t.line);
+        if(!hist) return; // no history and no team data to fall back on -- leave in queue
+        item.dailyRate = hist;
+        item.caution = '';
+        rateDefaulted++;
+      }
+      removeFromQueue(id);
+      const placed = placeOrderOnBoard({ ...item, rec: best.t.line }, item.resumed ? '재배정 · 이어서 생산' : '자동배정 · 유휴 라인 투입');
+      if(placed) placedCount++;
+    });
+    if(placedCount === 0){ showToast('자동배정할 수 있는 오더가 없습니다 · 일일생산량을 입력하세요'); return; }
+    showToast(`${placedCount}건 자동배정 완료${rateDefaulted > 0 ? ` · ${rateDefaulted}건은 과거 최고 생산량 기준 일일생산량 반영` : ''} · 확정된 오더는 변경되지 않았습니다`);
   });
 
   function showToast(msg){
@@ -2375,9 +2560,17 @@
     const riskLabel = { ok: '정상', warn: '주의', crit: '위험' };
 
     document.getElementById('lineDetailTitle').textContent = `${t.line}${t.idle ? ' · 유휴' : ''} · 생산 이력`;
+    // columns chosen for a production manager scanning past/current orders on this
+    // line: what it is, when it ran, whether it's locked in, target vs actual pace,
+    // and how much is left -- everything needed to judge this line's track record
+    // at a glance. Clicking a row drills into the full order detail (incl. the
+    // daily production chart), so per-row detail stays out of the table itself.
     document.getElementById('lineDetailBody').innerHTML = orders.length === 0
       ? `<div class="risk-empty">배정된 오더가 없습니다</div>`
-      : orders.map(b => {
+      : `<div class="ld-table-wrap"><table class="ld-table"><thead><tr>
+          <th>PO</th><th>품목</th><th>생산기간</th><th>상태</th><th>긴급도</th>
+          <th>목표 pcs/일</th><th>실적평균 pcs/일</th><th>진행률</th><th>잔여수량</th>
+        </tr></thead><tbody>` + orders.map(b => {
         const p = getProd(b);
         const { cumulativeActual, remaining, progressPct } = projectCompletion(p);
         const start = parseInt(b.dataset.start, 10), span = parseInt(b.dataset.span, 10);
@@ -2385,24 +2578,23 @@
         const daysReported = Object.keys(p.dailyLog).length;
         const actualAvg = daysReported > 0 ? Math.round(cumulativeActual / daysReported) : null;
         return `
-        <div class="ld-order" data-uid="${b.dataset.uid}">
-          <div class="ld-order-head">
-            <div class="rp">${b.dataset.po} · ${b.dataset.item}</div>
-            <span class="badge ${b.dataset.risk}">${riskLabel[b.dataset.risk] || b.dataset.risk}</span>
-          </div>
-          <div class="ld-order-meta">
-            ${fmtDay(start)}~${fmtDay(end)} 생산 (${span}일) · ${b.dataset.confirmed === 'true' ? '확정' : '확정 대기'}<br>
-            ${actualAvg != null ? `실적평균 <b>${actualAvg.toLocaleString()}pcs/일</b>` : '실적 없음'} · 계획목표 ${p.steadyRate.toLocaleString()}pcs/일 ·
-            누적 ${cumulativeActual.toLocaleString()} / 잔여 ${remaining.toLocaleString()}pcs (${progressPct}%)
-          </div>
-          <div class="ld-order-chart">${renderDailyChartSVG(p)}</div>
-        </div>`;
-      }).join('');
+        <tr data-uid="${b.dataset.uid}">
+          <td style="font-family:var(--mono)">${b.dataset.po}</td>
+          <td>${b.dataset.item}</td>
+          <td>${fmtDay(start)}~${fmtDay(end)} (${span}일)</td>
+          <td><span class="badge ${b.dataset.confirmed === 'true' ? 'ok' : 'warn'}">${b.dataset.confirmed === 'true' ? '확정' : '확정 대기'}</span></td>
+          <td><span class="badge ${b.dataset.risk}">${riskLabel[b.dataset.risk] || b.dataset.risk}</span></td>
+          <td class="qty">${p.steadyRate.toLocaleString()}</td>
+          <td class="qty">${actualAvg != null ? actualAvg.toLocaleString() : '—'}</td>
+          <td><div class="prog-mini"><div class="prog-track"><div class="prog-fill" style="width:${progressPct}%"></div></div>${progressPct}%</div></td>
+          <td class="qty">${remaining.toLocaleString()}</td>
+        </tr>`;
+      }).join('') + `</tbody></table></div>`;
     lineDetailOverlay.classList.add('open');
     lineDetailModalEl.classList.add('open');
   }
   document.getElementById('lineDetailBody').addEventListener('click', (e) => {
-    const row = e.target.closest('.ld-order');
+    const row = e.target.closest('tr[data-uid]');
     if(!row) return;
     const blk = document.querySelector(`.blk[data-uid="${row.dataset.uid}"]`);
     closeLineDetail();
